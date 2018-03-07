@@ -6,7 +6,7 @@
 *---------------------------------------------------------------
    
 addr1 EQU $2000 ; Memory Address of ORG for test code
-addr2 EQU $2200 ; Memory Address of end of test code to disassemble
+addr2 EQU $2010 ; Memory Address of end of test code to disassemble
 addr3 EQU $3000 ; Memory Address of Buffer for output
    
 * Start of Decoder
@@ -164,11 +164,12 @@ IO_VALID:
     
 IO_NEXT:
 * Check if the incremented address pointer is still less than the ending memory address
-
-    * if memory address pointer is still less than the ending memory address
-    BRA OPCODE
     
-    * else 
+    CMPA.L A0, A2
+    
+    BGT OPCODE * if memory address pointer is still less than the ending memory address, decode the next 16 bits
+    
+    * else finished decoding and branch to done
     BRA DONE  
 
 OPCODE:
@@ -461,6 +462,7 @@ DONE: ; done
     NOP
     NOT $1600   ; test instructions 
     NOP         ; test instruction
+    RTS
     
 
 * Put variables and constants here
@@ -523,6 +525,7 @@ OUT_E DC.B 'E', 0
 OUT_F DC.B 'F', 0
 
     END    START        ; last line of source
+
 
 
 *~Font name~Courier New~
