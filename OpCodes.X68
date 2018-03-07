@@ -276,15 +276,23 @@ FOUR:
     * check if it's RTS (0100 1110 0111 0101)
     CMP.W #$4E75, D2
     BEQ RTS
-                
+             
+    * check if it's JSR (0100 1110 10 [EA]) where [EA] is 6 bits
+    DIVU.W #64, D2 * divide D2 by 64 to isolate the first 10 bits of instruction
+    AND.L #$0000FFFF, D2 * mask the first 4 bytes (division remainder)
+    
+    CMP.W #$013A, D2 * check the first 10 bits are 0100 1110 10 shifted to -> 0000 0001 0011 1010
+    BEQ JSR
+       
+    MOVE.L (A0), D2 ; reload the first 16 bits of instruction to D2
+    
 * other instructions starting with 0100
             * 1100 0 -> MULS or DIVS (long)
             * XXX1 -> LEA
             * 0100 -> NEG
-            * 1110 -> JSR
             * 1X00 1 -> MOVEM
             
-* if none of those instructions with 0100 work, call invalide data
+* if none of those instructions with 0100 work, call invalid data
     BRA IO_INVALID
 
 
@@ -427,16 +435,17 @@ NEG:
     BRA IO_VALID
 
 JSR:
-* Load JSR to the Buffer
-
-* Call E/A to get effective addresses
+    MOVE.L (A0), D2 ; reload the first 16 bits of instruction to D2
     
-    * If E/A not valid call IO_INVALID
+    * Call E/A to get effective address for last 6 bits loaded in D2
+    
+        * If E/A not valid call IO_INVALID
+    
+    LEA JSR_OUT, A1 * load JSR to A1
+    
+    ADD.W #2, A0 * Increment address pointer by 16 bits (2 bytes)
 
-* Increment address pointer
-
-* Call I/O to output
-    BRA IO_VALID
+    BRA IO_VALID * Call I/O to output
 
 MOVEM:
 * Load MOVEM to the Buffer
@@ -460,6 +469,7 @@ DONE: ; done
 
     ORG $2000
     NOP
+    JSR DONE
     NOT $1600   ; test instructions 
     NOP         ; test instruction
     RTS
@@ -502,9 +512,18 @@ BRA_OUT DC.B 'BRA', 0       ; output message when BRA is the test instruction
 JSR_OUT DC.B 'JSR', 0       ; output message when JSR is the test instruction
 RTS_OUT DC.B 'RTS', 0       ; output message when RTS is the test instruction
 
+* Constants for Instruction size
+LONG DC.B '.L', 0
+WORD DC.B '.W', 0
+BYTE DC.B '.B', 0
+
 * Constants for Miscellaneous
 SPACE DC.B ' ', 0
 COMMA DC.B ',', 0
+HASH DC.B '#', 0
+DOLLAR DC.B '$', 0
+LEFT_PAREN DC.B '(', 0
+RIGHT_PAREN DC.B ')', 0
 
 * Constant Hex Numbers for XXXX XXXX DATA YYYY 
 OUT_0 DC.B '0', 0
@@ -525,6 +544,7 @@ OUT_E DC.B 'E', 0
 OUT_F DC.B 'F', 0
 
     END    START        ; last line of source
+
 
 
 
