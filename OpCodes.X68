@@ -15,7 +15,7 @@ addr3 EQU $3000 ; Memory Address of Buffer for output
     
 START:                  ; first instruction of program
 
-* Input output here    
+**** I/O ****  
 IO:
 
     * User Input for starting and ending memory address
@@ -25,6 +25,13 @@ IO:
     * check valid addresses
     
     * check that start address is less than end address
+    
+    * divide the range of addresses into pages *
+    * call OPCODE on the first range of page addresses *
+    
+    * check if next page is less than the end address of the whole program *
+    * Wait for 'Enter' after disassembling first page *
+    * call OPCODE on the second range of page addresses *
     
     MOVE.W #addr1, A0 ; pointer to the next instruction to read initialized to start of test program
     MOVE.W #addr3, A1 ; buffer pointer has to be A1 for output functionality
@@ -49,10 +56,7 @@ IO_INVALID:
     * Output the word loaded in D4
     JSR OUTPUT_WORD
     
-    * Output ' '
-    LEA SPACE, A1 ; loads the address of the constant output ' ', into A1
-    MOVE.B #14, D0 ; moves the number 14 into data register D0
-    TRAP #15
+    JSR PRINTSPACE * Output ' '
     
     * Move the second XXXX word of the address into D4
     MOVE.W A0, D4
@@ -60,32 +64,23 @@ IO_INVALID:
     * Output the word loaded in D4
     JSR OUTPUT_WORD
     
-    * Output ' '
-    LEA SPACE, A1 ; loads the address of the constant output ' ' into A1
-    MOVE.B #14, D0 ; moves the number 14 into data register D0
-    TRAP #15
+    JSR PRINTSPACE * Output ' '
     
     * The 'DATA' part
     LEA DATA_OUT, A1 ; loads the address of the constant output 'DATA' into A1
     MOVE.B #14, D0 ; moves the number 14 into data register D0
     TRAP #15
     
-    * Output ' '
-    LEA SPACE, A1 ; loads the address of the constant output ' ' into A1
-    MOVE.B #14, D0 ; moves the number 14 into data register D0
-    TRAP #15
+    JSR PRINTSPACE * Output ' '
     
     * The 'YYYY' part
     MOVE.W (A0), D4 * moves the data word at address A0 into D4
     JSR OUTPUT_WORD
     
-    * Output a space with a line break
-    LEA SPACE, A1
-    MOVE.B #13, D0
-    TRAP #15
+    JSR PRINTLINE * Output a space with a line break
     
 * Increment Address pointer by 16 bits (2 bytes)
-    ADD.W #2, A0
+    JSR INCR_ADDRESS
     
     BRA IO_NEXT         ; check if there is a next instruction or done disassembling
 
@@ -172,74 +167,155 @@ IO_NEXT:
     * else finished decoding and branch to done
     BRA DONE  
 
+PRINTADDRESSREGISTER: * always call with JSR, since this function returns with RTS *
+    * address register number should be loaded into the last 3 bits of D2 *
+    
+    * display A *
+    LEA OUT_A, A1 * loads A into A1
+    MOVE.B #14, D0
+    TRAP #15
+    
+    MOVE.B D2, D1 * loads the address register # for output
+    MOVE.B #3, D0 * trap task 3 displays a number to system out
+    TRAP #15 * calls trap #15
+    
+    RTS * return *
+    
+PRINT_DATA_REGISTER: * always call with JSR, since this function returns with RTS *
+    * data register number should be loaded into the last 3 bits of D2 *
+    
+    * display D *
+    LEA OUT_D, A1 * loads D into A1
+    MOVE.B #14, D0
+    TRAP #15
+    
+    MOVE.B D2, D1 * loads the data register # for output
+    MOVE.B #3, D0 * trap task 3 displays a number to system out
+    TRAP #15 * calls trap #15
+
+    RTS * return *
+
+PRINTBYTE: * always call with JSR, since this function returns with RTS *
+    
+    LEA BYTE, A1 * loads .B into A1
+    MOVE.B #14, D0    ; Moves the number 14 into data register D0
+    TRAP #15          ; TRAP 15 displays A1 to system out when D0 is #14
+    
+    RTS * return, skips all the way back to the call on TWOBITSIZE, CMP_OPMODE *
+
+PRINTWORD: * always call with JSR, since this function returns with RTS *
+    
+    LEA WORD, A1 * loads .W into A1
+    MOVE.B #14, D0 ; moves the number 14 into data register D0
+    TRAP #15 ; TRAP 15 dispalys A1 to system out when D0 is #14
+    
+    RTS * return, skips all the way back to the call on TWOBITSIZE, CMP_OPMODE *
+
+PRINTLONG: * always call with JSR, since this function returns with RTS *
+
+    LEA LONG, A1 * loads .L into A1
+    MOVE.B #14, D0 ; moves number 14 into data register D0
+    TRAP #15 ; TRAP 15 displays A1 to system out when D0 is #14
+    
+    RTS * return, skips all the way back to the call on TWOBITSIZE, CMP_OPMODE *
+    
+PRINTSPACE: * always call with JSR, since this function returns with RTS *
+
+    LEA SPACE, A1 * loads ' ' into A1
+    MOVE.B #14, D0 ; moves number 14 into data register D0
+    TRAP #15 ; TRAP 15 displays A1 to system out when D0 is #14
+    
+    RTS * return *
+    
+PRINTLINE: * always call with JSR, since this function returns with RTS *
+* prints a space with a line break *
+
+    LEA SPACE, A1 * loads ' ' into A1
+    MOVE.B #13, D0 ; moves number 14 into data register D0
+    TRAP #15 ; TRAP 15 displays A1 to systeem out with a line break when D0 is #13
+    
+    RTS * return *
+    
+PRINT_VAR: * always call with JSR, since this function returns with RTS *
+* prints the last thing loaded into A1, without a line break *
+
+    MOVE.B #14, D0 ; moves number 14 into data register D0
+    TRAP #15 ; TRAP #15 displays A1 to system out when D0 is #14
+    
+    RTS * return *
+
+**** OpCode ****
+* OpCode main should be branched to through OPCODE
+* 16+ bit instruction should be located at A0
+* A0 address pointer will be incremented according to the appropriate opcode instruction bit length
+* Opcode main returns by branching to IO_VALID in order to call a line return on the last data loaded into A1
 OPCODE:
 
 * Check first 4 bits of 16 bit instruction at A0 *
     
-    CLR.L D2          ; clear D2
-    MOVE.B (A0), D2 ; make a copy of the first 8 bits of the instruction at A0 in D2
+    JSR RELOAD_INSTRUCTION ; make a copy of the first 16 bits of the instruction at A0 in D2
     
-    DIVU.W #$10, D2 ; divide the instruction by 256 to isolate the first 4 bits from the second 4 bits
-    MOVE.B D2, D3   ; move first 4 bits to D3 for comparison
+    DIVU.W #$1000, D2 ; divide the instruction to isolate the first 4 bits
+    AND.L #$0000000F, D2 ; mask the division remainder
     
     * Check if first 4 bits are 0000
-    CMP.B #0, D3 
+    CMP.B #0, D2 
     BEQ ZERO        ; branch to check instructions that start with 0000
     
     * Check if first 4 bits are 0001
-    CMP.B #1, D3
+    CMP.B #1, D2
     BEQ ONE_TWO_THREE   ; branch to check instructions that start with 0001
     
     * Check if first 4 bits are 0010
-    CMP.B #2, D3
+    CMP.B #2, D2
     BEQ ONE_TWO_THREE   ; branch to check instructions that start with 0010
     
     * Check if first 4 bits are 0011
-    CMP.B #3, D3
+    CMP.B #3, D2
     BEQ ONE_TWO_THREE   ; branch to check instructions that start with 0011
     
     * Check if first 4 bits are 0100
-    CMP.B #4, D3
+    CMP.B #4, D2
     BEQ FOUR        ; branch to check instructions that start with 0100
     
     * Check if first 4 bits are 0101
-    CMP.B #5, D3
+    CMP.B #5, D2
     BEQ FIVE        ; branch to check instructions that start with 0101
     
     * Check if first 4 bits are 0110
-    CMP.B #6, D3
+    CMP.B #6, D2
     BEQ SIX         ; branch to check instructions that start with 0110
     
     * Check if first 4 bits are 0111
-    CMP.B #7, D3
+    CMP.B #7, D2
     BEQ SEVEN
     
     * Check if first 4 bits are 1000
-    CMP.B #8, D3
+    CMP.B #8, D2
     BEQ EIGHT
     
     * Check if first 4 bits are 1001
-    CMP.B #9, D3
+    CMP.B #9, D2
     BEQ NINE
     
     * Check if first 4 bits are 1010
-    CMP.B #10, D3
+    CMP.B #10, D2
     BEQ TEN
     
     * Check if first 4 bits are 1011
-    CMP.B #11, D3
+    CMP.B #11, D2
     BEQ ELEVEN
     
     * Check if first 4 bits are 1100
-    CMP.B #12, D3
+    CMP.B #12, D2
     BEQ TWELVE
     
     * Check if first 4 bits are 1101
-    CMP.B #13, D3
+    CMP.B #13, D2
     BEQ THIRTEEN
     
     * Check if first 4 bits are 1110
-    CMP.B #14, D3
+    CMP.B #14, D2
     BEQ FOURTEEN
     
     * Last Option is first 4 bits are 1111
@@ -266,8 +342,7 @@ ONE_TWO_THREE:
 * 0100 for first 4 bits *
 FOUR:
     
-    CLR.L D2          ; clear D2
-    MOVE.W (A0), D2 ; reload the first 16 bits of instruction to D2
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
     
     * check if it's NOP (0100 1110 0111 0001)
     CMP.W #$4E71, D2
@@ -284,7 +359,7 @@ FOUR:
     CMP.W #$013A, D2 * check the first 10 bits are 0100 1110 10 shifted to -> 0000 0001 0011 1010
     BEQ JSR
        
-    MOVE.W (A0), D2 ; reload the first 16 bits of instruction to D2
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
     
     * check if it's NEG (0100 0100 [size] [EA])
     DIVU.W #$100, D2 * divide D2 to isolate first 8 bits
@@ -300,7 +375,7 @@ FOUR:
     CMP.W #$0007, D2 * check that bits between [reg] and [EA] are 111
     BEQ LEA
     
-    MOVE.W (A0), D2 ; reload the first 16 bits of instruction to D2
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
     
 * other instructions starting with 0100
             * 1100 0 -> MULS or DIVS (long)
@@ -322,9 +397,7 @@ FIVE:
 * 0110 for first 4 bits *
 SIX:
     
-    CLR.L D2 * clear D2
-    
-    MOVE.W (A0), D2 ; reload the first 16 bits of instruction to D2
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
     
     DIVU.W #$100, D2 * divide the instruction to isolate the condition code
     AND.L #$0000000F, D2 * mask the division remainder and the first 4 bits of instruction
@@ -373,18 +446,40 @@ NINE:
     * if not SUB
     BRA IO_INVALID
 
-* 1011 for first 4 bits *
+* 1010 for first 4 bits *
 TEN:
-        * EOR (opmodes 100, 101, 110)
-        * CMP (opmodes 000, 001, 010)
-        
-    * if not EOR, CMP
+* Call I/O for invalid (none of the instructions to implement start this way)
     BRA IO_INVALID
 
 * 1011 for first 4 bits *
 ELEVEN:
-* Call I/O for invalid (none of the instructions to implement start this way)
-    BRA IO_INVALID
+    
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+
+    DIVU.W #64, D2 * divide the instruction to isolate the opmode
+    AND.L #$00000007, D2 * mask the division remainder and the first 7 bits of instruction
+    
+    * EOR (opmodes 100, 101, 110)
+    CMP.W #4, D2 * check for opmode 100
+    BEQ EOR * if yes EOR
+    
+    CMP.W #5, D2 * check for opmode 101
+    BEQ EOR * if yes EOR
+    
+    CMP.W #6, D2 * check for opmode 110
+    BEQ EOR * if yes EOR
+
+    * CMP (opmodes 000, 001, 010)
+    CMP.W #0, D2 * check for opmode 000
+    BEQ CMP * if yes CMP
+    
+    CMP.W #1, D2 * check for opmode 001
+    BEQ CMP * if yes CMP
+    
+    CMP.W #2, D2 * check for opmode 010
+    BEQ CMP * if yes CMP
+    
+    BRA IO_INVALID * when opmode is 111, 011
     
 * 1100 for first 4 bits *
 TWELVE:
@@ -418,7 +513,7 @@ NOP:
     LEA NOP_OUT, A1
     
 * Increment address pointer by 16 bits (2 bytes)
-    ADD.W #2, A0
+    JSR INCR_ADDRESS
     
 * Call I/O to output 
     BRA IO_VALID
@@ -429,7 +524,7 @@ RTS:
     LEA RTS_OUT, A1
 
 * Increment address pointer by 16 bits (2 bytes)
-    ADD.W #2, A0
+    JSR INCR_ADDRESS
 
 * Call I/O to output
     BRA IO_VALID
@@ -461,7 +556,7 @@ DIVS:
 NEG:
 
     * isolate size field 
-    MOVE.W (A0), D2 ; reload the first 16 bits of instruction to D2
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
     DIVU.W #64, D2 * divide by 64 to bit shift right 6 bits
     AND.L #$00000003, D2 * mask the divison remainder and the opcode bits
     
@@ -469,25 +564,25 @@ NEG:
     BEQ IO_INVALID
     
     LEA NEG_OUT, A1 * Load NEG to the Buffer
-    MOVE.B #14, D0 * moves 14 to D0
-    TRAP #15 * prints NEG to output
+    JSR PRINT_VAR * prints the last thing loaded into A1
     
     JSR TWOBITSIZE * call the 2 bit size function
     
-    MOVE.W (A0), D2 ; reload the first 16 bits of instruction to D2
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
     
     * Call E/A to get effective address, and print them to output
 
         * If E/A not valid call IO_INVALID
 
-    ADD.W #2, A0 * Increment address pointer by 16 bits (2 bytes)
+    JSR INCR_ADDRESS * Increment address pointer by 16 bits (2 bytes)
 
 * Call I/O to output a line return 
     LEA SPACE, A1
     BRA IO_VALID
 
 JSR:
-    MOVE.L (A0), D2 ; reload the first 16 bits of instruction to D2
+    
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
     
     * Call E/A to get effective address for last 6 bits loaded in D2
     
@@ -495,7 +590,7 @@ JSR:
     
     LEA JSR_OUT, A1 * load JSR to A1
     
-    ADD.W #2, A0 * Increment address pointer by 16 bits (2 bytes)
+    JSR INCR_ADDRESS * Increment address pointer by 16 bits (2 bytes)
 
     BRA IO_VALID * Call I/O to output
 
@@ -505,33 +600,25 @@ LEA:
         * if E/A not valid call IO_INVALID 
         
     LEA LEA_OUT, A1 * load LEA to A1
-    MOVE.B #14, D0 * load trap task 14 to D0
-    TRAP #15 * display LEA to system out
+    JSR PRINT_VAR * prints the last thing loaded into A1
     
     * display E/A to output
     
-    * display a space *
-    LEA SPACE, A1
-    MOVE.B #14, D0
-    TRAP #15
+    JSR PRINTSPACE * display a space *
     
     * display a comma *
     LEA COMMA, A1
-    MOVE.B #14, D0
-    TRAP #15
+    JSR PRINT_VAR * prints the last thing loaded into A1
     
-    * display a space *
-    LEA SPACE, A1
-    MOVE.B #14, D0
-    TRAP #15
+    JSR PRINTSPACE * display a space *
     
-    MOVE.W (A0), D2 ; reload the first 16 bits of instruction to D2
+    JSR RELOAD_INSTRUCTION MOVE.W ; reload the first 16 bits of instruction to D2
     DIVU.W #512, D2 * divide to shift the register bits all the way to the right
     AND.L #$0000007, D2 * mask division remainder and all bits except register number
     
-    JSR PRINTADDRESSREGISTER
+    JSR PRINTADDRESSREGISTER * prints the address register # stored in D2
     
-    ADD.W #2, A0 * Increment address pointer by 16 bits (2 bytes)
+    JSR INCR_ADDRESS * Increment address pointer by 16 bits (2 bytes)
     
     * print a line return *
     LEA SPACE, A1
@@ -577,19 +664,33 @@ BRA:
 BRANCHDISPLACEMENT: * only call this method with JSR, since it returns with RTS *
 * for the opcodes BCS, BGE, BLT, BVC, and BRA, (the Bcc opcodes), *
 * checks the 8-bit displacement to see how far to increment the address pointer *
-
-    * check 8 bit displacement = $00
-        * if yes, increment by 32 bits (4 bytes)
-        
-    * check if 8 bit displacement = $FF
-        * if yes, increment by 48 bits (6 bytes)
+    
+    CLR.L D2 * clear D2
+    
+    MOVE.W (A0), D2 ; reload the first 16 bits of instruction to D2
+    AND.W #$00FF, D2 * mask the first 8 bits of instruction to leave the 8 bit displacement
+    
+    CMP.B #$00, D2     * check 8 bit displacement = $00
+    BEQ INC32          * if yes, increment by 32 bits (4 bytes)
+    
+    CMP.B #$FF, D2     * check if 8 bit displacement = $FF
+    BEQ INC48          * if yes, increment by 48 bits (6 bytes)
         
     * else increment by 16 bits (2 bytes)
-    ADD.W #2, A0 * Increment address pointer by 16 bits (2 bytes)
+    JSR INCR_ADDRESS * Increment address pointer by 16 bits (2 bytes)
     
     RTS * return *
+    
+INC32: * call JSR on this method, since it returns with RTS *
 
-        
+    ADD.W #4, A0 * increment address pointer by 48 bits (6 bytes)
+    RTS * return, skips back to the JSR call on BRANCHDISPLACEMENT*
+   
+INC48: * call JSR on this method, since it returns with RTS *
+
+    ADD.W #6, A0 * increments address pointer by 32 bits (4 bytes)
+    RTS * return, skips back to the JSR call on BRANCHDISPLACEMENT *
+ 
 MOVEM:
 * Load MOVEM to the Buffer
 
@@ -601,6 +702,104 @@ MOVEM:
 
 * Call I/O to output
     BRA IO_VALID
+    
+CMP:
+    * Opmode is loaded into D2 *
+    
+    * Call E/A to get effective address *
+        * if E/A not valid call IO_INVALID *
+        
+    * print CMP *
+    LEA CMP_OUT, A1
+    JSR PRINT_VAR * print the last thing loaded into A1 (CMP)
+    
+    * print size based on opmode *
+    JSR CMP_OPMODE
+    
+    JSR PRINTSPACE * print space *
+    
+    * print E/A *
+    
+    * print comma *
+    LEA COMMA, A1
+    JSR PRINT_VAR * print the last thing loaded into A1 (comma)
+    
+    JSR PRINTSPACE * print space *
+    
+    * print Data register *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #512, D2 ; divide to isolate the data register
+    AND.L #$00000007, D2 ; mask the division remainder
+    JSR PRINT_DATA_REGISTER * call to PRINT_DATA_REGISTER
+    
+    * Increment Address pointer by 16 bits (2 bytes) *
+    JSR INCR_ADDRESS
+    
+    * Call I/O to output *
+    LEA SPACE, A1
+    BRA IO_VALID
+
+CMP_OPMODE: * always return with RTS since called with JSR *
+* opmode is loaded into D2 *
+
+    CMP.B #0, D2
+    BEQ PRINTBYTE
+    
+    CMP.B #1, D2
+    BEQ PRINTWORD
+    
+    CMP.B #2, D2
+    BEQ PRINTLONG
+    
+    RTS * if none of the opmodes are valid (shouldn't happen) *
+
+EOR:
+    * Opmode is loaded into D2 *
+
+    * Call E/A to get effective address *
+        * if E/A not valid call IO_INVALID
+    
+    * print EOR *
+    LEA EOR_OUT, A1
+    JSR PRINT_VAR * print the last var loaded into A1 (EOR)
+    
+    * print size based on opmode *
+    JSR EOR_OPMODE
+    
+    JSR PRINTSPACE * print space *
+    
+    * print Data register *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #512, D2 ; divide to isolate the data register
+    AND.L #$00000007, D2 ; mask the division remainder
+    JSR PRINT_DATA_REGISTER * call to PRINT_DATA_REGISTER
+    
+    * print comma *
+    LEA COMMA, A1
+    JSR PRINT_VAR * print the last var loaded into A1 (comma)
+    
+    * print E/A *
+    
+    * Increment address pointer by 16 bits (2 bytes) *
+    JSR INCR_ADDRESS
+
+    * Call I/O to output *
+    LEA SPACE, A1
+    BRA IO_VALID
+
+EOR_OPMODE: * must call with JSR, since returns with RTS *
+* Opmode is loaded into D2 *
+    
+    CMP.B #4, D2
+    BEQ PRINTBYTE
+    
+    CMP.B #5, D2
+    BEQ PRINTWORD
+    
+    CMP.B #6, D2
+    BEQ PRINTLONG
+    
+    RTS * return (only if EOR_opmode is invalid, which shouldn't happen) *
 
 TWOBITSIZE: * always call with JSR, since this function returns with RTS *
 * prints .L for 10, .W for 01, or .B for 00 where the two bits are in D7 *
@@ -615,43 +814,21 @@ TWOBITSIZE: * always call with JSR, since this function returns with RTS *
     BEQ PRINTLONG
 
     RTS * return if the data in D7 is invalid *
+    
+RELOAD_INSTRUCTION: * always call with JSR, since this function returns with RTS *
+* clears data register 2, and reloads the 16 bit instruction at Address Register 0 *
 
-PRINTBYTE: * always call with JSR, since this function returns with RTS *
+    CLR.L D2 * clear D2
     
-    LEA BYTE, A1 * loads .B into A1
-    MOVE.B #14, D0    ; Moves the number 14 into data register D0
-    TRAP #15          ; TRAP 15 displays A1 to system out when D0 is #14
+    MOVE.W (A0), D2 ; reload the first 16 bits of instruction to D2
     
-    RTS * return, skips all the way back to the call on TWOBITSIZE *
+    RTS * return *
+    
+INCR_ADDRESS: * always call with JSR, since this function returns with RTS *
+* increments the address pointer at A0 by 16 bits (2 bytes)
 
-PRINTWORD: * always call with JSR, since this function returns with RTS *
-    
-    LEA WORD, A1 * loads .W into A1
-    MOVE.B #14, D0 ; moves the number 14 into data register D0
-    TRAP #15 ; TRAP 15 dispalys A1 to system out when D0 is #14
-    
-    RTS * return, skips all the way back to the call on TWOBITSIZE *
+    ADD.W #2, A0
 
-PRINTLONG: * always call with JSR, since this function returns with RTS *
-
-    LEA LONG, A1 * loads .L into A1
-    MOVE.B #14, D0 ; moves number 14 into data register D0
-    TRAP #15 ; TRAP 15 displays A1 to system out when D0 is #14
-    
-    RTS * return, skips all the way back to the call on TWOBITSIZE *
-
-PRINTADDRESSREGISTER: * always call with JSR, since this function returns with RTS *
-    * address register number should be loaded into the last 3 bits of D2 *
-    
-    * display A *
-    LEA OUT_A, A1 * loads A into A1
-    MOVE.B #14, D0
-    TRAP #15
-    
-    MOVE.B D2, D1 * loads the address register # for output
-    MOVE.B #3, D0 * trap task 3 displays a number to system out
-    TRAP #15 * calls trap #15
-    
     RTS * return *
 
 DONE: ; done
@@ -663,6 +840,8 @@ DONE: ; done
 
     ORG $2000
     NOP         ; test instructions
+    EOR.W D1, D2
+    CMP.B D2, D1
     BGE DONE
     BLT DONE
     BVC DONE
@@ -745,6 +924,9 @@ OUT_E DC.B 'E', 0
 OUT_F DC.B 'F', 0
 
     END    START        ; last line of source
+
+
+
 
 
 
