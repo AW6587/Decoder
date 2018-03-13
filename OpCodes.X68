@@ -190,6 +190,20 @@ PRINT_DATA_REGISTER: * always call with JSR, since this function returns with RT
 
     RTS * return *
 
+PRINT_IDATA: * always call with JSR, since this function returns with RTS *
+    * immediate data should be loaded into the last 3 bits of D2 *
+    
+    * display # *
+    LEA HASH, A1
+    MOVE.B #14, D0
+    TRAP #15
+    
+    MOVE.B D2, D1 * loads the immediate data for output
+    MOVE.B #3, D0 * trap task 3 displays a number to system out
+    TRAP #15 * calls trap #15
+    
+    RTS * return *
+
 PRINTBYTE: * always call with JSR, since this function returns with RTS *
     
     LEA BYTE, A1 * loads .B into A1
@@ -383,11 +397,26 @@ FOUR:
 
 * 0101 for first 4 bits *
 FIVE:
-* SUBQ
+* SUBQ (size 00, 01, 10) with a 1 bit before size check for codes (100, 101, 110)
 
-
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    
+    * bit between [data] and [size] has to be a 1
+    
+    DIVU.W #64, D2 * divide the instruction to isolate size code
+    AND.L #$00000007, D2 * mask the division remainder and the first 7 bits of instruction
+    
+    CMP.B #4, D2 * check for code 100
+    BEQ SUBQ
+    
+    CMP.B #5, D2 * check for code 101
+    BEQ SUBQ
+    
+    CMP.B #6, D2 * check for code 110
+    BEQ SUBQ
+    
     * if not SUBQ
-    BRA IO_INVALID 
+    BRA IO_INVALID * when bit between data and size is 0 or size is 11
 
 * 0110 for first 4 bits *
 SIX:
@@ -1062,6 +1091,48 @@ SUB_RIGHT:
     LEA SPACE, A1
     BRA IO_VALID
 
+SUBQ:
+
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    
+    * Call E/A to get effective address *
+        * if E/A not valid call IO_INVALID *
+        
+    * Print SUBQ *
+    LEA SUBQ_OUT, A1
+    JSR PRINT_VAR * print the last var loaded into A1 (SUBQ)
+    
+    * isolate size *
+    DIVU.W #64, D2 * divide to isolate the size
+    AND.L #$00000003, D2 * mask the division remainder
+    
+    * print size *
+    JSR TWOBITSIZE
+    
+    JSR PRINTSPACE * print space *
+    
+    * print Immediate Data *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #512, D2 ; divide to isolate the data register
+    AND.L #$00000007, D2 ; mask the division remainder
+    JSR PRINT_IDATA * call to PRINT_IDATA
+
+    * print comma *
+    LEA COMMA, A1
+    JSR PRINT_VAR * print the last var loaded into A1 (comma)
+    
+    * print space *
+    JSR PRINTSPACE
+    
+    * print E/A *
+    
+    * Increment address pointer by 16 bits (2 bytes) *
+    JSR INCR_ADDRESS
+    
+    * Call I/O to output *
+    LEA SPACE, A1
+    BRA IO_VALID
+
 ADDA:
 * Load ADDA to the Buffer
 
@@ -1144,6 +1215,8 @@ DONE: ; done
 
     ORG $2000
     NOP         ; test instructions
+    SUBQ.L #7, D4
+    SUBQ.B #2, (A0)
     SUB.B D3, (A4)
     SUB.W (A0), D2
     ADD.W D2, (A2)
