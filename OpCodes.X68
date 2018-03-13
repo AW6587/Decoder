@@ -6,7 +6,7 @@
 *---------------------------------------------------------------
    
 addr1 EQU $2000 ; Memory Address of ORG for test code
-addr2 EQU $2030 ; Memory Address of end of test code to disassemble
+addr2 EQU $2040 ; Memory Address of end of test code to disassemble
 addr3 EQU $3000 ; Memory Address of Buffer for output
    
 * Start of Decoder
@@ -463,9 +463,32 @@ EIGHT:
 
 * 1001 for first 4 bits *
 NINE:    
-* SUB
+* SUB (opmodes 000, 001, 010, 100, 101, 110)
 
-    * if not SUB
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+
+    DIVU.W #64, D2 * divide the instruction to isolate the opmode
+    AND.L #$00000007, D2 * mask the division remainder and the first 7 bits of instruction
+    
+    CMP.W #0, D2 * check for opmode 000
+    BEQ SUB_LEFT * E/A is left operand
+    
+    CMP.W #1, D2 * check for opmode 001
+    BEQ SUB_LEFT * E/A is left operand
+    
+    CMP.W #2, D2 * check for opmode 010
+    BEQ SUB_LEFT * E/A is left operand
+    
+    CMP.W #4, D2 * check for opmode 100
+    BEQ SUB_RIGHT * E/A is right operand
+    
+    CMP.W #5, D2 * check for opmode 101
+    BEQ SUB_RIGHT * E/A is right operand
+    
+    CMP.W #6, D2 * check for opmode 110
+    BEQ SUB_RIGHT * E/A is right operand
+
+    * if not SUB (opmodes 011, 111)
     BRA IO_INVALID
 
 * 1010 for first 4 bits *
@@ -967,6 +990,78 @@ ADD_RIGHT:
     LEA SPACE, A1
     BRA IO_VALID
 
+SUB_LEFT:
+    * Opmode is loaded into D2 *
+
+    * Call E/A to get effective address *
+        * if E/A not valid call IO_INVALID *
+        
+    * Print SUB *
+    LEA SUB_OUT, A1
+    JSR PRINT_VAR * prints the last var loaded to A1 (SUB)
+    
+    * Print size based on opmode *
+    JSR THREE_BIT_OPMODE
+    
+    JSR PRINTSPACE * print space
+
+    * print E/A *
+    
+    * print comma *
+    LEA COMMA, A1
+    JSR PRINT_VAR * print the last var loaded into A1 (comma)
+    
+    JSR PRINTSPACE * print space
+    
+    * print Data register *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #512, D2 ; divide to isolate the data register
+    AND.L #$00000007, D2 ; mask the division remainder
+    JSR PRINT_DATA_REGISTER * call to PRINT_DATA_REGISTER
+    
+    * Increment address pointer by 16 bits (2 bytes) *
+    JSR INCR_ADDRESS
+    
+    * Call I/O to output *
+    LEA SPACE, A1
+    BRA IO_VALID
+
+SUB_RIGHT:
+    * Opmode is loaded into D2 *
+
+    * Call E/A to get effective address *
+        * if E/A not valid call IO_INVALID *
+   
+    * Print SUB *
+    LEA SUB_OUT, A1
+    JSR PRINT_VAR * prints the last var loaded to A1 (SUB)
+    
+    * Print size based on opmode *
+    JSR THREE_BIT_OPMODE
+    
+    JSR PRINTSPACE * print space
+    
+    * print Data register *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #512, D2 ; divide to isolate the data register
+    AND.L #$00000007, D2 ; mask the division remainder
+    JSR PRINT_DATA_REGISTER * call to PRINT_DATA_REGISTER
+    
+    * print comma *
+    LEA COMMA, A1
+    JSR PRINT_VAR * print the last var loaded into A1 (comma)
+    
+    JSR PRINTSPACE * print space
+    
+    * print E/A *
+    
+    * Increment address pointer by 16 bits (2 bytes) *
+    JSR INCR_ADDRESS
+    
+    * Call I/O to output *
+    LEA SPACE, A1
+    BRA IO_VALID
+
 ADDA:
 * Load ADDA to the Buffer
 
@@ -1049,6 +1144,8 @@ DONE: ; done
 
     ORG $2000
     NOP         ; test instructions
+    SUB.B D3, (A4)
+    SUB.W (A0), D2
     ADD.W D2, (A2)
     ADD.L (A3), D4
     OR.W D2, (A1)
