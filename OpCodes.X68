@@ -6,7 +6,7 @@
 *---------------------------------------------------------------
    
 addr1 EQU $2000 ; Memory Address of ORG for test code
-addr2 EQU $2040 ; Memory Address of end of test code to disassemble
+addr2 EQU $2060 ; Memory Address of end of test code to disassemble
 addr3 EQU $3000 ; Memory Address of Buffer for output
    
 * Start of Decoder
@@ -198,7 +198,7 @@ PRINT_IDATA: * always call with JSR, since this function returns with RTS *
     MOVE.B #14, D0
     TRAP #15
     
-    MOVE.B D2, D1 * loads the immediate data for output
+    MOVE.L D2, D1 * loads the immediate data for output
     MOVE.B #3, D0 * trap task 3 displays a number to system out
     TRAP #15 * calls trap #15
     
@@ -332,11 +332,34 @@ OPCODE:
 
 * 0000 for first 4 bits *
 ZERO:
-* check more bits to determine either:
-    * BCLR (dynamic)
-    * ORI
-    * BCLR (static)
-    * CMPI
+
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+
+    DIVU.W #256, D2 * divide instruction to isolate second 4 bits
+    AND.L #$0000000F, D2 * mask the division remainder and first 4 bits
+
+    * ORI [0000 0000] [2 bit size] [EA]
+    CMP.W #0, D2
+    BEQ ORI
+    
+    * CMPI [0000 1100] [2 bit size] [EA]
+    CMP.W #12, D2
+    BEQ CMPI
+    
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    
+    DIVU.W #64, D2 * divide to isolate the 6 bits before EA from first 4 bits
+    AND.L #$0000003F, D2 * mask the division remainder
+    
+    * BCLR (static) [0000 1000 10] [EA] -> masked EA bit shifts to 0010 0010
+    CMP.W #$22, D2
+    BEQ BCLR_STATIC
+
+    * BCLR (dynamic) [0000] [Register] [110] [EA]
+    AND.L #$00000007, D2 * mask the register
+    
+    CMP.W #6, D2
+    BEQ BCLR_DYNAMIC
 
 * if none of above for 0000 call invalid data
     BRA IO_INVALID
@@ -1133,16 +1156,212 @@ SUBQ:
     LEA SPACE, A1
     BRA IO_VALID
 
+ORI:
+    * Call E/A to get effective address *
+        * if E/A not valid call IO_INVALID *
+        
+    * Print ORI *
+    LEA ORI_OUT, A1
+    JSR PRINT_VAR * prints the last var loaded into A1 (ORI)
+    
+    * isolate the size *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+
+    DIVU.W #64, D2 * divide to isolate the size
+    AND.L #$00000003, D2 * mask the division remainder
+    
+    * print size *
+    JSR TWOBITSIZE
+    
+    JSR PRINTSPACE * print space *
+    
+    * print variable length (byte, word, long) immediate data *
+    JSR PRINT_IMMEDIATE
+    
+    * print comma *
+    LEA COMMA, A1
+    JSR PRINT_VAR * prints the last var loaded into A1 (comma)
+    
+    JSR PRINTSPACE * print space *
+    
+    * print E/A *
+    
+    * increment address pointer by either 32 bits or 48 bits *
+    JSR INCR_32_OR_48
+    
+    * Call I/O to output *
+    LEA SPACE, A1
+    BRA IO_VALID
+
+INCR_32_OR_48: * always call with JSR, since returns with RTS *
+
+    * isolate the size *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+
+    DIVU.W #64, D2 * divide to isolate the size
+    AND.L #$00000003, D2 * mask the division remainder
+    
+    CMP #0, D2 * check for byte size
+    BEQ INC32 * increments address pointer by 16 bits (2 bytes)
+    
+    CMP #1, D2 * check for word size
+    BEQ INC32 * increments address pointer by 16 bits (2 bytes)
+    
+    CMP #2, D2 * check for long size
+    BEQ INC48 * increments address pointer by 32 bits (4 bytes)
+    
+    RTS * return, shouldn't reach here, only if size is invalid *
+
+PRINT_IMMEDIATE: * always call by JSR, since returns with RTS *
+    * size is loaded in D2 (00 is Byte, 01 is Word, 10 is long)
+    
+    CMP #0, D2 * check if size of immediate is byte
+    BEQ BYTE_IMMEDIATE
+    
+    CMP #1, D2 * check if size of immediate is word
+    BEQ WORD_IMMEDIATE
+    
+    CMP #2, D2 * check if size of immediate is long
+    BEQ LONG_IMMEDIATE
+    
+    RTS * return, only gets here if size is invalid *
+
+BYTE_IMMEDIATE:
+
+    MOVEA.L A0, A5 * copies current address pointer to A5
+    
+    ADD.W #2, A5 * increments A5 address pointer by 2 bytes (16 bits)
+
+    CLR D2 * clear D2
+
+    MOVE.B (A5), D2 * copies the byte of memory at addrress A5 into D2
+
+    BRA PRINT_IDATA * prints the immediate data in D2, then returns to opcode
+
+WORD_IMMEDIATE:
+
+    MOVEA.L A0, A5 * copies current address pointer to A5
+    
+    ADD.W #2, A5 * increments A5 address pointer by 2 bytes (16 bits)
+    
+    CLR D2 * clear D2
+    
+    MOVE.W (A5), D2 * copies the word of memory at address A5 into D2
+
+    BRA PRINT_IDATA * prints the immediate data in D2, then returns to opcode
+    
+LONG_IMMEDIATE:
+
+    MOVEA.L A0, A5 * copies current address pointer to A5
+    
+    ADD.W #2, A5 * increments A5 address pointer by 2 bytes (16 bits)
+    
+    CLR D2 * clear D2
+    
+    MOVE.L (A5), D2 * copies the long of memory at address A5 into D2
+
+    BRA PRINT_IDATA * prints the immediate data in D2, then returns to opcode
+
+CMPI:
+
+    * Call E/A to get effective address *
+        * If E/A not valid call IO_INVALID *
+        
+    * Print CMPI *
+    LEA CMPI_OUT, A1
+    JSR PRINT_VAR * prints the last var loaded into A1 (CMPI)
+    
+    * isolate size *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    
+    DIVU.W #64, D2 * divide to isolate the size
+    AND.L #$00000003, D2 * mask the division remainder
+    
+    * print size *
+    JSR TWOBITSIZE
+    
+    JSR PRINTSPACE * print space *
+    
+    * print variable length (byte, word, long) immediate data *
+    JSR PRINT_IMMEDIATE
+    
+    * print comma *
+    LEA COMMA, A1
+    JSR PRINT_VAR * prints the last var loaded into A1 (comma)
+    
+    JSR PRINTSPACE * print space *
+    
+    * print E/A *
+    
+    * increment address pointer by 32 bits or 48 bits depending on size *
+    JSR INCR_32_OR_48
+    
+    * Call I/O to output *
+    LEA SPACE, A1
+    BRA IO_VALID
+    
+BCLR_STATIC:
+
+    * check if the next 8 bits following the current 16 bit instruction are 0
+        * if not call IO_INVALID
+
+    * Call E/A to get effective addresses
+
+        * If E/A not valid call IO_INVALID
+    
+    * Print BCLR *
+    
+    * Print Space *
+    
+    * print immediate data in thelast 8 bits of second 16 bit instructions * 
+    
+    * print comma *
+    
+    * print space *
+    
+    * print E/A *
+
+    * Increment address pointer by 32 bits (4 bytes) *
+
+    * Call I/O to output
+    LEA SPACE, A1
+    BRA IO_VALID
+
+BCLR_DYNAMIC:
+
+    * Call E/A to get effective addresses
+
+        * If E/A not valid call IO_INVALID
+        
+    * print BCLR *
+    
+    * print space *
+    
+    * print data register *
+    
+    * print comma *
+    
+    * print space *
+    
+    * print E/A *
+
+    * Increment address pointer by 16 bits
+
+    * Call I/O to output
+    LEA SPACE, A1
+    BRA IO_VALID
+
 ADDA:
-* Load ADDA to the Buffer
+    * Call E/A to get effective addresses
 
-* Call E/A to get effective addresses
+        * If E/A not valid call IO_INVALID
+        
+    * print ADDA *
 
-    * If E/A not valid call IO_INVALID
+    * Increment address pointer
 
-* Increment address pointer
-
-* Call I/O to output
+    * Call I/O to output
+    LEA SPACE, A1
     BRA IO_VALID
 
 
@@ -1172,7 +1391,7 @@ THREE_BIT_OPMODE * must call with JSR, since returns with RTS *
 
 TWOBITSIZE: * always call with JSR, since this function returns with RTS *
 * prints .L for 10, .W for 01, or .B for 00 where the two bits are in D2 *
-* Called from NEG, SUBQ (to be implemented), ORI (to be implemented), CMPI (to be implemented) *
+* Called from NEG, SUBQ, ORI, CMPI *
 
     CMP #0, D2 * check if the size is byte *
     BEQ PRINTBYTE
@@ -1215,6 +1434,11 @@ DONE: ; done
 
     ORG $2000
     NOP         ; test instructions
+    ORI.L #$10002000, D5
+    CMPI.L #24568465, D2
+    CMPI.W #$2020, D4
+    ORI.W #12, D5
+    ORI.L #45, (A0)
     SUBQ.L #7, D4
     SUBQ.B #2, (A0)
     SUB.B D3, (A4)
