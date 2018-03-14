@@ -885,16 +885,41 @@ REGISTER_SHIFT:
 
 LS_REG:
     * if size is 11, call IO_INVALID *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #64, D2 * divide instruction by 64 to isolate the size
+    AND.L #$00000003, D2 * mask division remainder and first 8 bits of instruction
+    
+    CMP.W #3, D2
+    BEQ IO_INVALID * size is 11 which is not allowed
     
     * check direction *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #256, D2 * divide instruction by 256 to isolate the direction bit
+    AND.L #$00000001, D2 * mask division remainder
+    
+    CMP.W #1, D2
+    BEQ LSL_REG
+    
+    CMP.W #0, D2
+    BEQ LSR_REG
+    
+    BRA IO_INVALID * this shouldn't be possible
 
 LSL_REG:
     * print LSL *
+    LEA LSL_OUT, A1
+    JSR PRINT_VAR * prints the last var loaded into A1 (LSL)
 
-    * print Size *    
+    * print Size *   
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #64, D2 * divide instruction by 64 to isolate the size
+    AND.L #$00000003, D2 * mask division remainder and first 8 bits of instruction
+    JSR TWOBITSIZE * prints the size where 00 is .B 01 is .W and 10 is .L 
+
+    JSR PRINTSPACE * print space *
 
     * check register or count *
-        * subroutine for this
+    JSR COUNT_OR_REGISTER
     
     * Increment address pointer
     JSR INCR_ADDRESS
@@ -905,11 +930,19 @@ LSL_REG:
 
 LSR_REG:
     * print LSR *
+    LEA LSR_OUT, A1
+    JSR PRINT_VAR * prints the last var loaded into A1 (LSR)
     
     * print Size *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #64, D2 * divide instruction by 64 to isolate the size
+    AND.L #$00000003, D2 * mask division remainder and first 8 bits of instruction
+    JSR TWOBITSIZE * prints the size where 00 is .B 01 is .W and 10 is .L
+
+    JSR PRINTSPACE * print space *
 
     * check register or count *
-        * subroutine for this
+    JSR COUNT_OR_REGISTER
     
     * Increment address pointer
     JSR INCR_ADDRESS
@@ -919,17 +952,42 @@ LSR_REG:
     BRA IO_VALID
 
 AS_REG:
-    * if size is 11 call IO_INVALID *
-
+    * if size is 11, call IO_INVALID *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #64, D2 * divide instruction by 64 to isolate the size
+    AND.L #$00000003, D2 * mask division remainder and first 8 bits of instruction
+    
+    CMP.W #3, D2
+    BEQ IO_INVALID * size is 11 which is not allowed
+    
     * check direction *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #256, D2 * divide instruction by 256 to isolate the direction bit
+    AND.L #$00000001, D2 * mask division remainder
+    
+    CMP.W #1, D2
+    BEQ ASL_REG
+    
+    CMP.W #0, D2
+    BEQ ASR_REG
+    
+    BRA IO_INVALID * this shouldn't be possible
 
 ASL_REG:
     * print ASL *
+    LEA ASL_OUT, A1
+    JSR PRINT_VAR * prints the last var loaded into A1 (ASL)
     
     * print Size *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #64, D2 * divide instruction by 64 to isolate the size
+    AND.L #$00000003, D2 * mask division remainder and first 8 bits of instruction
+    JSR TWOBITSIZE * prints the size where 00 is .B 01 is .W and 10 is .L
+
+    JSR PRINTSPACE * print space *
 
     * check register or count *
-        * subroutine for this
+    JSR COUNT_OR_REGISTER
     
     * Increment address pointer
     JSR INCR_ADDRESS
@@ -940,11 +998,19 @@ ASL_REG:
 
 ASR_REG:
     * print ASR *
+    LEA ASR_OUT, A1
+    JSR PRINT_VAR * prints the last var loaded into A1 (ASR)
     
     * print Size *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #64, D2 * divide instruction by 64 to isolate the size
+    AND.L #$00000003, D2 * mask division remainder and first 8 bits of instruction
+    JSR TWOBITSIZE * prints the size where 00 is .B 01 is .W and 10 is .L
+
+    JSR PRINTSPACE * print space *
 
     * check register or count *
-        * subroutine for this
+    JSR COUNT_OR_REGISTER
     
     * Increment address pointer
     JSR INCR_ADDRESS
@@ -955,16 +1021,41 @@ ASR_REG:
     
 RO_REG:
     * if size is 11 call IO_INVALID *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #64, D2 * divide instruction by 64 to isolate the size
+    AND.L #$00000003, D2 * mask division remainder and first 8 bits of instruction
+    
+    CMP.W #3, D2
+    BEQ IO_INVALID * size is 11 which is not allowed
     
     * check direction *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #256, D2 * divide instruction by 256 to isolate the direction bit
+    AND.L #$00000001, D2 * mask division remainder
+    
+    CMP.W #1, D2
+    BEQ ROL_REG
+    
+    CMP.W #0, D2
+    BEQ ROR_REG
+    
+    BRA IO_INVALID * this shouldn't be possible
     
 ROL_REG:
     * print ROL *
+    LEA ROL_OUT, A1
+    JSR PRINT_VAR * prints the last var loaded to A1 (ROL)
     
     * print Size *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #64, D2 * divide instruction by 64 to isolate the size
+    AND.L #$00000003, D2 * mask division remainder and first 8 bits of instruction
+    JSR TWOBITSIZE * prints the size where 00 is .B 01 is .W and 10 is .L
+    
+    JSR PRINTSPACE * print space *
     
     * check register or count *
-        * subroutine for this
+    JSR COUNT_OR_REGISTER
 
     * Increment address pointer
     JSR INCR_ADDRESS
@@ -975,11 +1066,19 @@ ROL_REG:
 
 ROR_REG:
     * print ROR *
+    LEA ROR_OUT, A1
+    JSR PRINT_VAR * prints the last var loaded to A1 (ROR)
     
     * print Size *
-
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #64, D2 * divide instruction by 64 to isolate the size
+    AND.L #$00000003, D2 * mask division remainder and first 8 bits of instruction
+    JSR TWOBITSIZE * prints the size where 00 is .B 01 is .W and 10 is .L
+    
+    JSR PRINTSPACE * print space *
+    
     * check register or count *
-        * subroutine for this
+    JSR COUNT_OR_REGISTER
     
     * Increment address pointer
     JSR INCR_ADDRESS
@@ -987,6 +1086,65 @@ ROR_REG:
     * Call I/O to output
     LEA SPACE, A1
     BRA IO_VALID
+
+COUNT_OR_REGISTER:
+    * check the count/register bit
+    JSR RELOAD_INSTRUCTION
+    DIVU.W #32, D2 * divide instruction by 32 to isolate the count/register bit
+    AND.L #$00000001, D2 * mask division remainder
+    
+    CMP.B #0, D2
+    BEQ REG_COUNT
+    
+    CMP.B #1, D2
+    BEQ REG_REG
+
+    RTS * return, shouldn't be able to reach here *
+
+REG_REG:
+    * print the first data register *
+    JSR RELOAD_INSTRUCTION
+    DIVU.W #512, D2 * isolate the first data register in D2
+    AND.L #$00000007, D2 * mask the division remainder and the first 4 bits of instruction
+    
+    JSR PRINT_DATA_REGISTER
+    
+    * print comma *
+    LEA COMMA, A1
+    JSR PRINT_VAR * prints the last var loaded into A1 (comma)
+    
+    JSR PRINTSPACE * print space *
+    
+    * print the second data register *
+    JSR RELOAD_INSTRUCTION
+    AND.L #$00000007, D2 * mask the first 13 bits of instruction to isolate the second data register
+    
+    JSR PRINT_DATA_REGISTER
+    
+    RTS * return *
+
+REG_COUNT:
+    
+    * print the immediate data count *
+    JSR RELOAD_INSTRUCTION
+    DIVU.W #512, D2 * isolate the immediate data count in D2
+    AND.L #$00000007, D2 * mask the division remainder and the first 4 bits of instruction
+    
+    JSR PRINT_IDATA
+    
+    * print comma *
+    LEA COMMA, A1
+    JSR PRINT_VAR * prints the last var loaded into A1 (comma)
+    
+    JSR PRINTSPACE * print space *
+    
+    * print the data register *
+    JSR RELOAD_INSTRUCTION
+    AND.L #$00000007, D2 * mask the first 13 bits of instruction to isolate the data register
+    
+    JSR PRINT_DATA_REGISTER
+    
+    RTS * return *
 
 NOP:
 * Load NOP to the Buffer (in A1)
@@ -1894,6 +2052,18 @@ DONE: ; done
 * test code down here -> memory address ORG at $2000
 
     ORG $2000
+    ASL.B #2, D0
+    ASR.W #7, D2
+    ROL.L #3, D0
+    ROR.B #3, D4
+    LSL.B #2, D5
+    LSR.B #1, D6
+    ASL.B D1, D2
+    ASR.W D3, D4
+    ROL.L D4, D5
+    ROR.B D0, D1
+    LSL.B D2, D3
+    LSR.L D4, D6
     LSL.W (A0)
     LSR (A2)
     ASR.W (A2)
