@@ -634,13 +634,359 @@ THIRTEEN:
 FOURTEEN:    
     * one of the shifts (LSL, LSR, ASL, ASR, ROL, ROR) depending on later bits
     
+    * check bits 6-7 -> [11] for memory shifts [00, 01, or 10] for register shifts
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    
+    DIVU.W #64, D2 * divide the instruction to isolate the size/[11] bits
+    AND.L #$00000003, D2 * mask the division remainder and the first 8 bits of instruction
+    
+    CMP.B #0, D2
+    BEQ REGISTER_SHIFT
+    
+    CMP.B #1, D2
+    BEQ REGISTER_SHIFT
+    
+    CMP.B #2, D2
+    BEQ REGISTER_SHIFT
+    
+    CMP.B #3, D2
+    BEQ MEMORY_SHIFT
+    
     * if none of the shifts
-    BRA IO_INVALID
+    BRA IO_INVALID * shouldn't be possible to get here
 
 * 1111 for first 4 bits *
 FIFTEEN:
 * Call I/O for invalid (none of the instructions to implement start this way) 
     BRA IO_INVALID
+
+MEMORY_SHIFT:
+    * one of the shifts (LSL, LSR, ASL, ASR, ROL, ROR) specified with a single E/A
+        
+    * check next 3 bits after first 4 bits
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #512, D2 * divide instruction by 512
+    AND.L #$00000007, D2 * mask division remainder
+    
+    * 3 bits are 001 -> LSL/LSR *
+    CMP.W #1, D2
+    BEQ LS_MEM
+    
+    * 3 bits are 000 -> ASL/ASR *
+    CMP.W #0, D2
+    BEQ AS_MEM
+    
+    * 3 bits are 011 -> ROL/ROR *
+    CMP.W #3, D2
+    BEQ RO_MEM
+    
+    BRA IO_INVALID * if none of the shifts (bits 12-10 are something other than 001, 000, 011)
+    
+LS_MEM:
+    * either LSL or LSR (memory shift) depending on direction bit *
+    
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #256, D2 * divide instruction by 256 to isolate the direction bit
+    AND.L #$00000001, D2 * mask division remainder
+    
+    CMP.W #0, D2
+    BEQ LSR_MEM
+    
+    CMP.W #1, D2
+    BEQ LSL_MEM
+    
+    BRA IO_INVALID * this shouldn't be possible
+    
+LSL_MEM:
+    * call E/A to get effective Address *
+        * if E/A not valid call IO_INVALID
+    
+    * prints LSL *
+    LEA LSL_OUT, A1
+    JSR PRINT_VAR * prints the last thing loaded into A1 (LSL)
+    
+    * print word (only size available to memory shifts) *
+    JSR PRINTWORD
+    
+    JSR PRINTSPACE * print space *
+    
+    * print E/A *
+    
+    * Increment address pointer
+    JSR INCR_ADDRESS
+
+    * Call I/O to output
+    LEA SPACE, A1
+    BRA IO_VALID
+
+LSR_MEM:
+    * call E/A to get effective Address *
+        * if E/A not valid call IO_INVALID
+        
+    * prints LSR *
+    LEA LSR_OUT, A1
+    JSR PRINT_VAR * prints the last thing loaded into A1 (LSR)
+    
+    * print word (only size available to memory shifts) *
+    JSR PRINTWORD
+    
+    JSR PRINTSPACE * print space *
+    
+    * print E/A *
+    
+    * Increment address pointer *
+    JSR INCR_ADDRESS
+    
+    * Call I/O to output
+    LEA SPACE, A1
+    BRA IO_VALID
+
+AS_MEM:
+    * either ASL or ASL (memory shift) depending on direction bit *
+    
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #256, D2 * divide instruction by 256 to isolate the direction bit
+    AND.L #$00000001, D2 * mask division remainder
+    
+    CMP.W #0, D2
+    BEQ ASR_MEM
+    
+    CMP.W #1, D2
+    BEQ ASL_MEM
+    
+    BRA IO_INVALID * this shouldn't be possible
+    
+ASL_MEM:
+    * call E/A to get effective Address *
+        * if E/A not valid call IO_INVALID
+        
+    * print ASL *
+    LEA ASL_OUT, A1
+    JSR PRINT_VAR * prints the last thing loaded into A1 (ASL)
+    
+    * print word (only size available to memory shifts) *
+    JSR PRINTWORD
+    
+    * print space * 
+    JSR PRINTSPACE
+    
+    * print E/A *
+    
+    * Increment address pointer
+    JSR INCR_ADDRESS
+
+    * Call I/O to output
+    LEA SPACE, A1
+    BRA IO_VALID
+    
+ASR_MEM:
+    * call E/A to get effective Address *
+        * if E/A not valid call IO_INVALID
+        
+    * print ASR *
+    LEA ASR_OUT, A1
+    JSR PRINT_VAR * prints the last thing loaded into A1 (ASR)
+    
+    * print word (only size available to memory shifts *
+    JSR PRINTWORD
+    
+    * print space *
+    JSR PRINTSPACE
+    
+    * print E/A *
+    
+    * Increment address pointer
+    JSR INCR_ADDRESS
+    
+    * Call I/O to output
+    LEA SPACE, A1
+    BRA IO_VALID
+        
+RO_MEM:
+    * either ROL or ROR (memory shift) depending on direction bit *
+    
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #256, D2 * divide instruction by 256 to isolate the direction bit
+    AND.L #$00000001, D2 * mask division remainder
+    
+    CMP.W #0, D2
+    BEQ ROR_MEM
+    
+    CMP.W #1, D2
+    BEQ ROL_MEM
+    
+    BRA IO_INVALID * this shouldn't be possible
+    
+ROL_MEM:
+    * call E/A to get effective Address *
+        * if E/A not valid call IO_INVALID
+        
+    * print ROL *
+    LEA ROL_OUT, A1
+    JSR PRINT_VAR * prints the last thing loaded into A1 (ROL)
+    
+    * print word (only size available to memory shifts *
+    JSR PRINTWORD
+    
+    * print space *
+    JSR PRINTSPACE
+    
+    * print E/A *
+    
+    * Increment address pointer
+    JSR INCR_ADDRESS
+
+    * Call I/O to output
+    LEA SPACE, A1
+    BRA IO_VALID
+        
+ROR_MEM:
+    * call E/A to get effective Address *
+        * if E/A not valid call IO_INVALID
+        
+    * print ROR *
+    LEA ROR_OUT, A1
+    JSR PRINT_VAR * prints the last thing loaded into A1 (ROR)
+    
+    * print word (only size available to memory shifts *
+    JSR PRINTWORD
+    
+    * print space *
+    JSR PRINTSPACE
+    
+    * print E/A *
+    
+    * Increment address pointer
+    JSR INCR_ADDRESS
+
+    * Call I/O to output
+    LEA SPACE, A1
+    BRA IO_VALID
+        
+REGISTER_SHIFT:
+    * one of the shifts (LSL, LSR, ASL, ASR, ROL, ROR) specified with either immediate #count, or a Data register
+        
+    * check bits 4-3, next to the register
+        * 01 is LSL/LSR, 00 is ASL/ASR, 11 is ROL/ROR
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #8, D2 * divide instruction by 512
+    AND.L #$00000003, D2 * mask division remainder
+    
+    CMP.B #0, D2
+    BEQ AS_REG
+    
+    CMP.B #1, D2
+    BEQ LS_REG
+    
+    CMP.B #3, D2
+    BEQ RO_REG
+    
+    BRA IO_INVALID * if none of the shifts (bits 4-3 are 10)
+
+LS_REG:
+    * if size is 11, call IO_INVALID *
+    
+    * check direction *
+
+LSL_REG:
+    * print LSL *
+
+    * print Size *    
+
+    * check register or count *
+        * subroutine for this
+    
+    * Increment address pointer
+    JSR INCR_ADDRESS
+
+    * Call I/O to output
+    LEA SPACE, A1
+    BRA IO_VALID
+
+LSR_REG:
+    * print LSR *
+    
+    * print Size *
+
+    * check register or count *
+        * subroutine for this
+    
+    * Increment address pointer
+    JSR INCR_ADDRESS
+
+    * Call I/O to output
+    LEA SPACE, A1
+    BRA IO_VALID
+
+AS_REG:
+    * if size is 11 call IO_INVALID *
+
+    * check direction *
+
+ASL_REG:
+    * print ASL *
+    
+    * print Size *
+
+    * check register or count *
+        * subroutine for this
+    
+    * Increment address pointer
+    JSR INCR_ADDRESS
+
+    * Call I/O to output
+    LEA SPACE, A1
+    BRA IO_VALID
+
+ASR_REG:
+    * print ASR *
+    
+    * print Size *
+
+    * check register or count *
+        * subroutine for this
+    
+    * Increment address pointer
+    JSR INCR_ADDRESS
+
+    * Call I/O to output
+    LEA SPACE, A1
+    BRA IO_VALID
+    
+RO_REG:
+    * if size is 11 call IO_INVALID *
+    
+    * check direction *
+    
+ROL_REG:
+    * print ROL *
+    
+    * print Size *
+    
+    * check register or count *
+        * subroutine for this
+
+    * Increment address pointer
+    JSR INCR_ADDRESS
+
+    * Call I/O to output
+    LEA SPACE, A1
+    BRA IO_VALID
+
+ROR_REG:
+    * print ROR *
+    
+    * print Size *
+
+    * check register or count *
+        * subroutine for this
+    
+    * Increment address pointer
+    JSR INCR_ADDRESS
+
+    * Call I/O to output
+    LEA SPACE, A1
+    BRA IO_VALID
 
 NOP:
 * Load NOP to the Buffer (in A1)
@@ -1548,6 +1894,12 @@ DONE: ; done
 * test code down here -> memory address ORG at $2000
 
     ORG $2000
+    LSL.W (A0)
+    LSR (A2)
+    ASR.W (A2)
+    ASL (A1)
+    ROL.W (A4)
+    ROR.W (A5)
     ADDA.L A1, A2
     BCLR #4, (A3)
     MULS D2, D3
