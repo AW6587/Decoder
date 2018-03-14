@@ -409,9 +409,7 @@ FOUR:
     
     JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
     
-* other instructions starting with 0100
-            * 1100 0 -> MULS or DIVS (long)
-            
+* other instructions starting with 0100 
             * 1X00 1 -> MOVEM
             
 * if none of those instructions with 0100 work, call invalid data
@@ -582,6 +580,15 @@ ELEVEN:
 TWELVE:
     * MULS
     
+    * check that the 3 bits between [register] and [E/A] are 111 (basically the opmode)
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+
+    DIVU.W #64, D2 * divide the instruction to isolate the opmode
+    AND.L #$00000007, D2 * mask the division remainder and the first 7 bits of instruction
+    
+    CMP.W #7, D2 * check that the 3 bits between [reg] and [E/A] are 111
+    BEQ MULS
+    
     * if not MULS
     BRA IO_INVALID
     
@@ -657,27 +664,71 @@ RTS:
     BRA IO_VALID
 
 MULS:
-* Load MULS to the Buffer (in A1)
+    * Call E/A to get effective address
+        * If E/A not valid call IO_INVALID
+        
+    * print MULS *
+    LEA MULS_OUT, A1
+    JSR PRINT_VAR * prints the last var loaded to A1 (MULS)
+        
+    * print .W (since Word is the only valid size of MULS *
+    JSR PRINTWORD * prints .W
+    
+    JSR PRINTSPACE * print space *
+    
+    * print E/A *
+    
+    * print comma *
+    LEA COMMA, A1
+    JSR PRINT_VAR * prints the last var loaded into A1 (comma)
+    
+    JSR PRINTSPACE * print space *
 
-* Call E/A to get effective addresses
+    * print Data register *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #512, D2 ; divide to isolate the data register
+    AND.L #$00000007, D2 ; mask the division remainder
+    JSR PRINT_DATA_REGISTER * call to PRINT_DATA_REGISTER
 
-    * If E/A not valid call IO_INVALID
+    * Increment address pointer
+    JSR INCR_ADDRESS
 
-* Increment address pointer
-
-* Call I/O to output
+    * Call I/O to output
+    LEA SPACE, A1
     BRA IO_VALID
 
 DIVS:
-* Load DIVS to the Buffer (in A1)
-
-* Call E/A to get effective addresses
+    * Call E/A to get effective address
+        * If E/A not valid call IO_INVALID
+        
+    * print DIVS *
+    LEA DIVS_OUT, A1
+    JSR PRINT_VAR * prints the last var loaded to A1 (DIVS)
     
-    * If E/A not valid call IO_INVALID
+    * print .W (since Word is the only valid size for DIVS *
+    JSR PRINTWORD * prints .W
 
-* Increment address pointer
+    JSR PRINTSPACE * print space *
 
-* Call I/O to output
+    * print E/A *
+    
+    * print comma *
+    LEA COMMA, A1
+    JSR PRINT_VAR * prints the last var loaded to A1 (comma)
+    
+    JSR PRINTSPACE * print space *
+    
+    * print Data register *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #512, D2 ; divide to isolate the data register
+    AND.L #$00000007, D2 ; mask the division remainder
+    JSR PRINT_DATA_REGISTER * call to PRINT_DATA_REGISTER
+
+    * Increment address pointer by 16 bits (2 bytes)
+    JSR INCR_ADDRESS
+
+    * Call I/O to output
+    LEA SPACE, A1
     BRA IO_VALID
 
 NEG:
@@ -1465,6 +1516,8 @@ DONE: ; done
 
     ORG $2000
     BCLR #4, (A3)
+    MULS D2, D3
+    DIVS (A1), D3
     NOP         ; test instructions
     BCLR D4, (A2)
     ORI.L #$10002000, D5
