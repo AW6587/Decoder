@@ -671,7 +671,7 @@ MULS:
     LEA MULS_OUT, A1
     JSR PRINT_VAR * prints the last var loaded to A1 (MULS)
         
-    * print .W (since Word is the only valid size of MULS *
+    * print .W (since Word is the only valid size of MULS) *
     JSR PRINTWORD * prints .W
     
     JSR PRINTSPACE * print space *
@@ -705,7 +705,7 @@ DIVS:
     LEA DIVS_OUT, A1
     JSR PRINT_VAR * prints the last var loaded to A1 (DIVS)
     
-    * print .W (since Word is the only valid size for DIVS *
+    * print .W (since Word is the only valid size for DIVS) *
     JSR PRINTWORD * prints .W
 
     JSR PRINTSPACE * print space *
@@ -1434,18 +1434,51 @@ BCLR_DYNAMIC:
     BRA IO_VALID
 
 ADDA:
+* opmode is loaded into D2 (either 011 for Word, or 111 for Long) *
+
     * Call E/A to get effective addresses
 
         * If E/A not valid call IO_INVALID
         
     * print ADDA *
+    LEA ADDA_OUT, A1
+    JSR PRINT_VAR * prints the last var loaded to A1 (ADDA)
+    
+    * print size *
+    JSR ADDA_SIZE
+    
+    JSR PRINTSPACE * print space *
+    
+    * print E/A *
+    
+    * print comma *
+    LEA COMMA, A1
+    JSR PRINT_VAR * prints the last var loaded to A1 (comma)
+    
+    * print address Register *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #512, D2 ; divide to isolate the address register
+    AND.L #$00000007, D2 ; mask the division remainder
+    JSR PRINTADDRESSREGISTER * call to PRINTADDRESSREGISTER
 
     * Increment address pointer
+    JSR INCR_ADDRESS
 
     * Call I/O to output
     LEA SPACE, A1
     BRA IO_VALID
 
+
+ADDA_SIZE:
+    * opmode is loaded into D2 *
+    
+    CMP.W #7, D2 * check if opmode is 111 *
+    BEQ PRINTLONG
+    
+    CMP.W #3, D2 * chck if opmode is 011 *
+    BEQ PRINTWORD
+    
+    RTS * return, only would be able to get here if size is invalid *
 
 THREE_BIT_OPMODE * must call with JSR, since returns with RTS *
 * Opmode is loaded into D2 *
@@ -1515,6 +1548,7 @@ DONE: ; done
 * test code down here -> memory address ORG at $2000
 
     ORG $2000
+    ADDA.L A1, A2
     BCLR #4, (A3)
     MULS D2, D3
     DIVS (A1), D3
