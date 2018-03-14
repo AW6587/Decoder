@@ -6,7 +6,7 @@
 *---------------------------------------------------------------
    
 addr1 EQU $2000 ; Memory Address of ORG for test code
-addr2 EQU $2060 ; Memory Address of end of test code to disassemble
+addr2 EQU $2050 ; Memory Address of end of test code to disassemble
 addr3 EQU $3000 ; Memory Address of Buffer for output
    
 * Start of Decoder
@@ -810,12 +810,12 @@ BRANCHDISPLACEMENT: * only call this method with JSR, since it returns with RTS 
 INC32: * call JSR on this method, since it returns with RTS *
 
     ADD.W #4, A0 * increment address pointer by 48 bits (6 bytes)
-    RTS * return, skips back to the JSR call on BRANCHDISPLACEMENT*
+    RTS * return, skips back to the JSR call on BRANCHDISPLACEMENT, INCR_32_OR_64 *
    
 INC48: * call JSR on this method, since it returns with RTS *
 
     ADD.W #6, A0 * increments address pointer by 32 bits (4 bytes)
-    RTS * return, skips back to the JSR call on BRANCHDISPLACEMENT *
+    RTS * return, skips back to the JSR call on BRANCHDISPLACEMENT, INCR_32_OR_64 *
  
 MOVEM:
 * Load MOVEM to the Buffer
@@ -1136,7 +1136,7 @@ SUBQ:
     
     * print Immediate Data *
     JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
-    DIVU.W #512, D2 ; divide to isolate the data register
+    DIVU.W #512, D2 ; divide to isolate the immediate data
     AND.L #$00000007, D2 ; mask the division remainder
     JSR PRINT_IDATA * call to PRINT_IDATA
 
@@ -1202,13 +1202,13 @@ INCR_32_OR_48: * always call with JSR, since returns with RTS *
     AND.L #$00000003, D2 * mask the division remainder
     
     CMP #0, D2 * check for byte size
-    BEQ INC32 * increments address pointer by 16 bits (2 bytes)
+    BEQ INC32 * increments address pointer by 32 bits (4 bytes)
     
     CMP #1, D2 * check for word size
-    BEQ INC32 * increments address pointer by 16 bits (2 bytes)
+    BEQ INC32 * increments address pointer by 32 bits (4 bytes)
     
     CMP #2, D2 * check for long size
-    BEQ INC48 * increments address pointer by 32 bits (4 bytes)
+    BEQ INC48 * increments address pointer by 32 bits (6 bytes)
     
     RTS * return, shouldn't reach here, only if size is invalid *
 
@@ -1303,25 +1303,45 @@ CMPI:
 BCLR_STATIC:
 
     * check if the next 8 bits following the current 16 bit instruction are 0
-        * if not call IO_INVALID
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    
+    MOVEA.L A0, A5 * copies current address pointer to A5
+    
+    ADD.W #2, A5 * increments A5 address pointer by 2 bytes (16 bits)
+
+    CLR D2 * clear D2
+
+    MOVE.B (A5), D2 * copies the byte of memory at addrress A5 into D2
+    
+    CMP.B #$00, D2 * checks that the next 8 bits following the instruction are 0000 0000
+    BNE IO_INVALID * if not equal, invalid instruction
 
     * Call E/A to get effective addresses
 
         * If E/A not valid call IO_INVALID
     
     * Print BCLR *
+    LEA BCLR_OUT, A1
+    JSR PRINT_VAR * prints the last var loaded into A1 (BCLR)
     
     * Print Space *
+    JSR PRINTSPACE
     
-    * print immediate data in thelast 8 bits of second 16 bit instructions * 
+    * print immediate data in the last 8 bits of second 16 bit instructions * 
+    ADD.W #1, A5 * increments A5 to point at the immediate data
+    JSR WORD_IMMEDIATE * prints the immediate data
     
     * print comma *
+    LEA COMMA, A1
+    JSR PRINT_VAR * prints the last var loaded into A1 (comma)
     
     * print space *
+    JSR PRINTSPACE
     
     * print E/A *
 
     * Increment address pointer by 32 bits (4 bytes) *
+    JSR INC32
 
     * Call I/O to output
     LEA SPACE, A1
@@ -1334,18 +1354,29 @@ BCLR_DYNAMIC:
         * If E/A not valid call IO_INVALID
         
     * print BCLR *
+    LEA BCLR_OUT, A1
+    JSR PRINT_VAR * prints the last var loaded into A1 (BCLR)
     
     * print space *
+    JSR PRINTSPACE
     
     * print data register *
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    DIVU.W #512, D2 ; divide to isolate the data register
+    AND.L #$00000007, D2 ; mask the division remainder
+    JSR PRINT_DATA_REGISTER * call to PRINT_DATA_REGISTER
     
     * print comma *
+    LEA COMMA, A1
+    JSR PRINT_VAR * prints the last var loaded into A1 (comma)
     
     * print space *
+    JSR PRINTSPACE
     
     * print E/A *
 
     * Increment address pointer by 16 bits
+    JSR INCR_ADDRESS
 
     * Call I/O to output
     LEA SPACE, A1
@@ -1433,19 +1464,14 @@ DONE: ; done
 * test code down here -> memory address ORG at $2000
 
     ORG $2000
+    BCLR #4, (A3)
     NOP         ; test instructions
+    BCLR D4, (A2)
     ORI.L #$10002000, D5
     CMPI.L #24568465, D2
-    CMPI.W #$2020, D4
-    ORI.W #12, D5
-    ORI.L #45, (A0)
-    SUBQ.L #7, D4
     SUBQ.B #2, (A0)
-    SUB.B D3, (A4)
     SUB.W (A0), D2
-    ADD.W D2, (A2)
     ADD.L (A3), D4
-    OR.W D2, (A1)
     OR.B (A2), D3
     EOR.W D1, D2
     CMP.B D2, D1
