@@ -5,9 +5,9 @@
 * Description: Separate Opcodes by checking bits from MSB to LSB
 *---------------------------------------------------------------
    
-addr1 EQU $2000 ; Memory Address of ORG for test code
-addr2 EQU $2050 ; Memory Address of end of test code to disassemble
-addr3 EQU $3000 ; Memory Address of Buffer for output
+addr1 EQU $3000 ; Memory Address of ORG for test code
+addr2 EQU $3050 ; Memory Address of end of test code to disassemble
+addr3 EQU $4000 ; Memory Address of Buffer for output
    
 * Start of Decoder
 
@@ -367,7 +367,17 @@ ZERO:
 * 0001, 0010, 0011 for first 4 bits *
 ONE_TWO_THREE:
     * MOVE or MOVEA
+        
+    * isolate destination mode (bits 8-6)
+    JSR RELOAD_INSTRUCTION * reloads the 16 bit instruction into D2
+    DIVU.W #64, D2 * divide to isolate the destination mode
+    AND.L #$00000007, D2 * mask the division remainder
+        
+    CMP.B #1, D2
+    BEQ MOVEA * MOVEA has bits 8-6 as 001, MOVE does not allow 001 as a destination mode
     
+    BRA MOVE * else it's MOVE
+        
 * if not MOVE or MOVEA call invalid data
     BRA IO_INVALID
     
@@ -660,6 +670,93 @@ FIFTEEN:
 * Call I/O for invalid (none of the instructions to implement start this way) 
     BRA IO_INVALID
 
+MOVE:
+
+    * check if size is valid *
+    JSR RELOAD_INSTRUCTION * reload the 16 bit instruction into D2
+    DIVU.W #$1000, D2 * divide the instruction to isolate the size
+    AND.L #$00000003, D2 * mask the division remainder
+    
+    CMP.B #0, D2
+    BEQ IO_INVALID * the only invalid size is 00
+    
+    * call E/A to get effective Addresses *
+        * if E/A not valid call IO_INVALID *
+        
+    * print MOVE *
+    LEA MOVE_OUT, A1
+    JSR PRINT_VAR * prints the last var loaded into A1 (MOVE)
+    
+    * print size *
+    JSR RELOAD_INSTRUCTION * reload the 16 bit instruction into D2
+    DIVU.W #$1000, D2 * divide the instruction to isolate the size
+    AND.L #$00000003, D2 * mask the division remainder
+    
+    JSR MOVESIZE * prints the size (.B, .W, or .L)
+    
+    JSR PRINTSPACE * print space *
+    
+    * print E/A *
+    
+    LEA COMMA, A1
+    JSR PRINT_VAR * print the last var loaded into A1 (comma)
+    
+    JSR PRINTSPACE * print space *
+    
+    * print E/A *
+    
+    * Increment address pointer *
+    JSR INCR_ADDRESS
+    
+    * Call I/O to output
+    LEA SPACE, A1
+    BRA IO_VALID
+
+MOVEA:
+
+    * check if size is valid *
+    JSR RELOAD_INSTRUCTION * reload the 16 bit instruction into D2
+    DIVU.W #$1000, D2 * divide the instruction to isolate the size
+    AND.L #$00000003, D2 * mask the division remainder
+    
+    CMP.B #0, D2
+    BEQ IO_INVALID * size 00 is invalid
+    
+    CMP.B #1, D2 
+    BEQ IO_INVALID * size 01 is invalid
+    
+    * call E/A to get effective Addresses *
+        * if E/A not valid call IO_INVALID *
+        
+    * print MOVEA *
+    LEA MOVEA_OUT, A1
+    JSR PRINT_VAR * prints the last var loaded into A1 (MOVEA)
+    
+    JSR MOVESIZE (prints .W, or .L for the size)
+    
+    JSR PRINTSPACE * print space *
+    
+    * print E/A *
+    
+    LEA COMMA, A1
+    JSR PRINT_VAR * print the last var loaded into A1 (comma)
+    
+    JSR PRINTSPACE * print space *
+    
+    * print address register *
+    JSR RELOAD_INSTRUCTION * reload the 16 bit instruction into D2
+    DIVU.W #512, D2 * divide to isolate the destination register
+    AND.L #$00000007, D2 * mask the division remainder
+    
+    JSR PRINTADDRESSREGISTER * prints the address register number in D2
+    
+    * Increment address pointer *
+    JSR INCR_ADDRESS
+    
+    * Call I/O to output
+    LEA SPACE, A1
+    BRA IO_VALID
+   
 MEMORY_SHIFT:
     * one of the shifts (LSL, LSR, ASL, ASR, ROL, ROR) specified with a single E/A
         
@@ -2026,6 +2123,15 @@ TWOBITSIZE: * always call with JSR, since this function returns with RTS *
 MOVESIZE: * always call with JSR, since this function returns with RTS *
 * prints .L for 10, .W for 11, or .B for 01 where the two bits are in D2 *
 
+    CMP #1, D2 * check if the size is a byte *
+    BEQ PRINTBYTE
+    
+    CMP #2, D2 * check if the size is a long *
+    BEQ PRINTLONG
+    
+    CMP #3, D2 * check if the size is a word *
+    BEQ PRINTWORD
+
     RTS * return if the size is invalid (shouldn't be if checking invalid size before calling *
     
 RELOAD_INSTRUCTION: * always call with JSR, since this function returns with RTS *
@@ -2049,26 +2155,19 @@ DONE: ; done
 
     SIMHALT             ; halt simulator
 
-* test code down here -> memory address ORG at $2000
+* test code down here -> memory address ORG at $3000
 
-    ORG $2000
+    ORG $3000
     ASL.B #2, D0
-    ASR.W #7, D2
     ROL.L #3, D0
-    ROR.B #3, D4
     LSL.B #2, D5
-    LSR.B #1, D6
     ASL.B D1, D2
     ASR.W D3, D4
-    ROL.L D4, D5
     ROR.B D0, D1
     LSL.B D2, D3
-    LSR.L D4, D6
     LSL.W (A0)
-    LSR (A2)
     ASR.W (A2)
     ASL (A1)
-    ROL.W (A4)
     ROR.W (A5)
     ADDA.L A1, A2
     BCLR #4, (A3)
@@ -2086,6 +2185,8 @@ DONE: ; done
     CMP.B D2, D1
     BGE DONE
     BLT DONE
+    MOVEA.W D3, A2
+    MOVE.B D2, D5
     BVC DONE
     BCS DONE
     BRA DONE
