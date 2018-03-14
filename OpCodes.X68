@@ -44,27 +44,7 @@ IO:
     BRA OPCODE
 
 IO_INVALID:
-* Display XXXX XXXX DATA YYYY
-
-    * The 'XXXX XXXX' (Address of current instruction) part
-    * Move the first XXXX word of the address into D4
-    MOVE.L A0, D4
-    ROL.L #8, D4 * shift the first word left 8 bits
-    ROL.L #8, D4 * shift the first word left another 8 bits for a total 16 bits
-    AND.L #$0000FFFF, D4 * mask the second word 
-    
-    * Output the word loaded in D4
-    JSR OUTPUT_WORD
-    
-    JSR PRINTSPACE * Output ' '
-    
-    * Move the second XXXX word of the address into D4
-    MOVE.W A0, D4
-   
-    * Output the word loaded in D4
-    JSR OUTPUT_WORD
-    
-    JSR PRINTSPACE * Output ' '
+* Display DATA YYYY
     
     * The 'DATA' part
     LEA DATA_OUT, A1 ; loads the address of the constant output 'DATA' into A1
@@ -262,6 +242,26 @@ OPCODE:
 
 * Check first 4 bits of 16 bit instruction at A0 *
     
+    * Display 'XXXX XXXX' (Address of current instruction)
+    * Move the first XXXX word of the address into D4
+    MOVE.L A0, D4
+    ROL.L #8, D4 * shift the first word left 8 bits
+    ROL.L #8, D4 * shift the first word left another 8 bits for a total 16 bits
+    AND.L #$0000FFFF, D4 * mask the second word 
+    
+    * Output the word loaded in D4
+    JSR OUTPUT_WORD
+    
+    JSR PRINTSPACE * Output ' '
+    
+    * Move the second XXXX word of the address into D4
+    MOVE.W A0, D4
+   
+    * Output the word loaded in D4
+    JSR OUTPUT_WORD
+    
+    JSR PRINTSPACE * Output ' '
+    
     JSR RELOAD_INSTRUCTION ; make a copy of the first 16 bits of the instruction at A0 in D2
     
     DIVU.W #$1000, D2 ; divide the instruction to isolate the first 4 bits
@@ -418,9 +418,16 @@ FOUR:
     BEQ LEA
     
     JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+     
+    * 1X00 1 -> MOVEM ( so either 1100 1, or 1000 1) (shifted is 1 1001 or 1 0001)
+    DIVU.W #128, D2 * divide by 128 to shift 7 bits
+    AND.L #$0000001F, D2 * mask the division remainder and the first 4 bits of the instruction
     
-* other instructions starting with 0100 
-            * 1X00 1 -> MOVEM
+    CMP.W #$0011, D2 * 1 0001
+    BEQ MOVEM
+    
+    CMP.W #$0019, D2 * 1 1001
+    BEQ MOVEM
             
 * if none of those instructions with 0100 work, call invalid data
     BRA IO_INVALID
@@ -1470,15 +1477,94 @@ INC48: * call JSR on this method, since it returns with RTS *
     RTS * return, skips back to the JSR call on BRANCHDISPLACEMENT, INCR_32_OR_64 *
  
 MOVEM:
-* Load MOVEM to the Buffer
+    * check direction * 
+    
+    JSR RELOAD_INSTRUCTION * reloads the first 16 bits of instruction to D2 *
+    DIVU.W #1024, D2
+    AND.L #$00000001, D2 * mask the division remainder
+    
+    CMP.B #0, D2
+    BEQ MOVEM_REG_TO_MEM
+    
+    CMP.B #1, D2
+    BEQ MOVEM_MEM_TO_REG
 
-* Call E/A to get effective addresses
+    BRA IO_INVALID * shouldn't be able to reach here
+    
+MOVEMSIZE:
+    
+    JSR RELOAD_INSTRUCTION * reloads the first 16 bits of instruction to D2 *
+    DIVU.W #64, D2 * divide by 64 to isolate the size bit
+    AND.L #$00000001, D2 * mask the division remainder
+    
+    CMP.B #0, D2
+    BEQ PRINTWORD
+    
+    CMP.B #1, D2
+    BEQ PRINTLONG
+    
+    RTS * return, shouldn't ever get here *
+    
+MOVEM_REG_TO_MEM:
 
-    * If E/A not valid call IO_INVALID
+    * Call E/A to get effective addresses
+        * If E/A not valid call IO_INVALID
+    
+    * print MOVEM *
+    LEA MOVEM_OUT, A1
+    JSR PRINT_VAR * print the last thing loaded into A1 (MOVEM) *
+    
+    * print size *
+    JSR MOVEMSIZE
+    
+    JSR PRINTSPACE * print space *
 
-* Increment address pointer
+    * print registers *
+    
+    * print comma *
+    LEA COMMA, A1
+    JSR PRINT_VAR * prints the last thing loaded into A1 (comma)
+    
+    JSR PRINTSPACE * print space *
+    
+    * print E/A *
 
-* Call I/O to output
+    * Increment address pointer by 32 bits (4 bytes)
+    JSR INC32
+    
+    * Call I/O to output
+    LEA SPACE, A1
+    BRA IO_VALID
+
+MOVEM_MEM_TO_REG:
+    
+    * Call E/A to get effective addresses
+        * If E/A not valid call IO_INVALID
+    
+    * print MOVEM *
+    LEA MOVEM_OUT, A1
+    JSR PRINT_VAR * print the last thing loaded into A1 (MOVEM) *
+    
+    * print size *
+    JSR MOVEMSIZE
+    
+    JSR PRINTSPACE * print space *
+    
+    * print E/A *
+    
+    * print comma *
+    LEA COMMA, A1
+    JSR PRINT_VAR * print the last thing loaded into A1 (comma) *
+
+    JSR PRINTSPACE * print space *
+
+    * print registers *
+
+    * Increment address pointer by 32 bits (4 bytes)
+    JSR INC32
+    
+    * Call I/O to output
+    LEA SPACE, A1
     BRA IO_VALID
     
 CMP:
@@ -2158,6 +2244,9 @@ DONE: ; done
 * test code down here -> memory address ORG at $3000
 
     ORG $3000
+    MOVEM.L D2, (A1)
+    MOVEM.W (A3), D2
+    DIVU.W D1, D2 * not implemented -> should be DATA YYYY
     ASL.B #2, D0
     ROL.L #3, D0
     LSL.B #2, D5
@@ -2267,6 +2356,7 @@ OUT_E DC.B 'E', 0
 OUT_F DC.B 'F', 0
 
     END    START        ; last line of source
+
 
 
 
