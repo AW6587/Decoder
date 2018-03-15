@@ -45,15 +45,20 @@ startadr_in:
                 LEA     STARTADR_MSG,A1     ;load start address message
                 MOVE.B  #14,D0              ;load command for trap to display string
                 TRAP    #15                 ;display start address message
-                CLR     D0
+                CLR.L   D0
+                
+                LEA     INPUT_DISCLAIMER, A1 ; load input disclaimer message
+                MOVE.B  #14, D0
+                TRAP    #15
+                CLR.L   D0
                 
                 MOVEA.L #0,A1               ;clear register 
                 LEA     STARTADR,A1         ;load address in A1 to store staring address
-                CLR     (A1)                ; clear the memory where starting address will be stored
-                CLR     D1                  ;input length will be auto stored here
+                CLR.B   (A1)                ; clear the memory where starting address will be stored
+                CLR.L   D1                  ;input length will be auto stored here
                 MOVE.B  #2,D0               ;load command for trap to read data input
                 TRAP    #15                 ;read start address from keyboard, stores at memlocation STARTADR
-                CLR     D0
+                CLR.L   D0
                 JSR     valid_input         ;validate start address
                 JSR     convert2hex         ;convert ascii input to hex
                 MOVE.L  D0,D2               ;starting address hex value is moved to be stored longterm in D2
@@ -66,6 +71,11 @@ endadR_in:
                 LEA     ENDADR_MSG,A1       ;load end address message
                 MOVE.B  #14,D0              ;load command for trap to display string
                 TRAP    #15                 ;display end address message
+                CLR     D0
+                
+                LEA     INPUT_DISCLAIMER, A1 ; load input disclaimer message
+                MOVE.B  #14, D0
+                TRAP    #15
                 CLR     D0
                 
                 MOVEA.L #0,A1               ;clear register 
@@ -89,7 +99,7 @@ start_lt_end:
                 * and current address (start address loaded into A0)
                 
                 MOVE.L D2, A3 * moves start address into A3
-                MOVE.L D2, A0 * moves start address inot A0
+                MOVE.L D2, A0 * moves start address into A0
                 MOVE.L D3, A2 * moves end address into A2
     
     * check that start address is less than end address
@@ -101,9 +111,14 @@ start_lt_end:
     * Wait for 'Enter' after disassembling first page *
     * call OPCODE on the second range of page addresses *
     
-    CLR.L (A1)            ; clear the buffer
+    * CLR (A1)            ; clear the buffer
     
-    BRA OPCODE
+    MOVE.L #0, D7 * sets line on page counter to 0
+    
+    LEA START_DISASSEMBLING, A1
+    JSR PRINT_VAR * prints START_DISASSEMBLING message
+    
+    BRA OPCODE * decode first 16 bit instruction
 
 *-----------------------------------------------------------
 * Address Validation
@@ -113,7 +128,7 @@ start_lt_end:
 *-----------------------------------------------------------
 valid_input:    
                 CLR.L   D5                  ;clear register
-                MOVE.L  (A1),D5             ;load input address into D5
+                MOVE.B  (A1),D5             ;load input address into D5
                 CMP     #0,D1               ;input length stored in D1, cmp if $00
                 BEQ.S   if_bad              ;no entry if it's $00
                 CLR.L   D5                  ;clear register again, needed for hex conversion subroutine
@@ -199,6 +214,39 @@ print_bad_data
 print_ea
 
 print_opcode
+
+IO_PAGE:
+    
+    ADD.W #1, D7 * increment line counter on page
+    
+    * if page counter is > 19, wait for user to display enter before proceeding to call opcode 
+    CMP.W #19, D7 * check if page counter is greater than 20
+    BGT WAIT_FOR_ENTER * if it is, wait for the user to hit enter before displaying the next opcode
+
+    * else go straight to next opcode
+    BRA OPCODE
+    
+WAIT_FOR_ENTER:
+
+    * display message to see next page of memory decoded
+    LEA NEXT_PAGE, A1
+    JSR PRINT_VAR * prints NEXT_PAGE message to output
+    
+    * wait for enter
+    MOVE.B  #2,D0               ;load command for trap to read data input
+    TRAP    #15     * call trap task 2
+    
+    * Disassembled memory message
+    LEA START_DISASSEMBLING, A1
+    JSR PRINT_VAR * prints disassembled memory message
+    
+    * CLR.L (A1) * clear A1 (changed by trap task 2)
+    CLR.L D1 * clear D1 (changed by trap task 2)
+    
+    CLR.L D7 * reset line counter to 0
+
+    * after enter got to next opcode
+    BRA OPCODE
 
 IO_INVALID:
 * Display DATA YYYY
@@ -294,7 +342,9 @@ IO_NEXT:
     
     CMPA.L A0, A2
     
-    BGT OPCODE * if memory address pointer is still less than the ending memory address, decode the next 16 bits
+    BGT IO_PAGE * if memory address pointer is still less than the ending memory address, 
+               * check if the user needs another page before decoding the next 16 bits
+               * (this was BGT OPCODE)
     
     * else finished decoding and branch to done
     BRA DONE  
@@ -399,6 +449,8 @@ OPCODE:
 
 * Check first 4 bits of 16 bit instruction at A0 *
     
+    CLR.L D2
+    
     * Display 'XXXX XXXX' (Address of current instruction)
     * Move the first XXXX word of the address into D4
     MOVE.L A0, D4
@@ -408,8 +460,6 @@ OPCODE:
     
     * Output the word loaded in D4
     JSR OUTPUT_WORD
-    
-    JSR PRINTSPACE * Output ' '
     
     * Move the second XXXX word of the address into D4
     MOVE.W A0, D4
@@ -2404,9 +2454,9 @@ graceful_end:
                 JMP     THE_END  
     SIMHALT             ; halt simulator
 
-* test code down here -> memory address ORG at $3000
+* test code down here -> memory address ORG at $4000
 
-    ORG $3000
+    ORG $4000
     MOVEM.L D2, (A1)
     MOVEM.W (A3), D2
     DIVU.W D1, D2 * not implemented -> should be DATA YYYY
@@ -2482,14 +2532,13 @@ INTRO           DC.B    '.......................................................
                 DC.B    '.|___/|___||___//_/ \_\|___/|___/|___||_|  |_| |___/|____||_|_\.',CR,LF
                 DC.B    '................................................................',CR,LF,0
 
-STARTADR_MSG    DC.B    'Enter a starting address in hex (even numbers only)and press enter',CR,LF,0
-ENDADR_MSG      DC.B    'Enter an ending address in hex (even numbers only)and press enter',CR,LF,0
+STARTADR_MSG    DC.B    'Enter a starting address in hex',CR,LF,0
+INPUT_DISCLAIMER DC.B   '(even only, no spaces, max 8 characters) and press enter',CR,LF,0
+ENDADR_MSG      DC.B    'Enter an ending address in hex',CR,LF,0
 INVALID_MSG     DC.B    'Address not valid, try again',CR,LF,0
 PROGRAM_END     DC.B    'End of program. Not so RISCy afterall!',CR,LF,0
-
-GOOD_BUFFER     DS.B    100
-STARTADR        DS.B    8
-ENDADR          DS.B    8
+NEXT_PAGE       DC.B    'Press enter to see more!',CR,LF,0
+START_DISASSEMBLING DC.B 'Disassembled memory:',CR,LF,0
 
 * Constants for output instructions
 NOP_OUT DC.B 'NOP',0        ; output message when NOP is the test instruction
@@ -2556,8 +2605,13 @@ OUT_D DC.B 'D', 0
 OUT_E DC.B 'E', 0
 OUT_F DC.B 'F', 0
 
+GOOD_BUFFER     DS.B    100
+STARTADR        DS.B    8
+ENDADR          DS.B    8
+
 THE_END:
     END    START        ; last line of source
+
 
 
 
