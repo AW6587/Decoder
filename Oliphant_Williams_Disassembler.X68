@@ -102,17 +102,6 @@ start_lt_end:
                 MOVE.L D2, A0 * moves start address into A0
                 MOVE.L D3, A2 * moves end address into A2
     
-    * check that start address is less than end address
-    
-    * divide the range of addresses into pages *
-    * call OPCODE on the first range of page addresses *
-    
-    * check if next page is less than the end address of the whole program *
-    * Wait for 'Enter' after disassembling first page *
-    * call OPCODE on the second range of page addresses *
-    
-    * CLR (A1)            ; clear the buffer
-    
     MOVE.L #0, D7 * sets line on page counter to 0
     
     LEA START_DISASSEMBLING, A1
@@ -200,21 +189,6 @@ done_or_shift:
 return2sub:      
                 RTS                         ;utility to return to calling subroutine when conversion is done
 
-*-----------------------------------------------------------
-* Print Buffer / output
-* Description: output either represents a readable assembly
-* comand or address cannot be read and display in the form
-* XXXXXXXX	DATA   YYYY, (XXXXXXXX is the memory address of 
-* the word and YYYY is the hex value of the word)
-*-----------------------------------------------------------
-read_goodbuffer
-
-print_bad_data
-
-print_ea
-
-print_opcode
-
 IO_PAGE:
     
     ADD.W #1, D7 * increment line counter on page
@@ -245,7 +219,7 @@ WAIT_FOR_ENTER:
     
     CLR.L D7 * reset line counter to 0
 
-    * after enter got to next opcode
+    * after enter go to next opcode
     BRA OPCODE
 
 IO_INVALID:
@@ -1778,8 +1752,13 @@ CMP:
     * Opmode is loaded into D2 *
     
     * Call E/A to get effective address *
-        * if E/A not valid call IO_INVALID *
-        
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP1 * D6 will be set to 1 if valid, 0 if invalid
+    
+    CMP.B #0, D6 * if E/A not valid call IO_INVALID *
+    BEQ IO_INVALID     
+   
     * print CMP *
     LEA CMP_OUT, A1
     JSR PRINT_VAR * print the last thing loaded into A1 (CMP)
@@ -1790,6 +1769,9 @@ CMP:
     JSR PRINTSPACE * print space *
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * print comma *
     LEA COMMA, A1
@@ -2443,7 +2425,490 @@ INCR_ADDRESS: * always call with JSR, since this function returns with RTS *
 
     RTS * return *
 
+EA_GROUP1: * always call with JSR, since returns with RTS *
+* checks if the 6 bit E/A in [mode] [reg] order in D3 is valid, sets D6 to 1 if valid, 0 if invalid *
+* all E/A modes are valid *
+* called from the opcodes MOVE (src), MOVEA, ADD (left is E/A), SUB (left is E/A), ADDA, CMP *
+
+    JSR SET_EA_INVALID * initialize valid/invalid flag to 0 *
+
+    JSR IS_DN * checks if the E/A is Dn, sets D6 to 1 if valid *
+
+    JSR IS_AN * checks if the E/A is An, sets D6 to 1 if valid *
+    
+    JSR IS_AN_INDIRECT * checks if the E/A is (An), sets D6 to 1 if valid *
+    
+    JSR IS_AN_INC * checks if the E/A is (An)+ , sets D6 to 1 if valid *
+    
+    JSR IS_AN_DEC * checks if the E/A is -(SP), sets D6 to 1 if valid *
+    
+    JSR IS_WORD * checks if the E/A is (xxx).W, sets D6 to 1 if valid *
+    
+    JSR IS_LONG * checks if the E/A is (xxx).L, sets D6 to 1 if valid *
+    
+    JSR IS_IMMEDIATE * checks if the E/A is #<data>, sets D6 to 1 if valid *
+
+    RTS * return *
+
+EA_GROUP2: * always call with JSR, since returns with RTS *
+* checks if the 6 bit E/A in [mode] [reg] order in D3 is valid, sets D6 to 1 if valid, 0 if invalid *
+* An is not valid E/A mode, all other E/A modes are valid *
+* called from the opcodes MULS, DIVS, OR (left is E/A) *
+
+    JSR SET_EA_INVALID * initialize valid/invalid flag to 0 *
+
+    JSR IS_DN * checks if the E/A is Dn, sets D6 to 1 if valid *
+    
+    JSR IS_AN_INDIRECT * checks if the E/A is (An), sets D6 to 1 if valid *
+    
+    JSR IS_AN_INC * checks if the E/A is (An)+ , sets D6 to 1 if valid *
+    
+    JSR IS_AN_DEC * checks if the E/A is -(SP), sets D6 to 1 if valid *
+    
+    JSR IS_WORD * checks if the E/A is (xxx).W, sets D6 to 1 if valid *
+    
+    JSR IS_LONG * checks if the E/A is (XXX).L, sets D6 to 1 if valid *
+    
+    JSR IS_IMMEDIATE * checks if the E/A is #<data>, sets D6 to 1 if valid *
+
+    RTS * return *
+
+EA_GROUP3: * always call with JSR, since returns with RTS *
+* checks if the 6 bit E/A in [mode] [reg] order in D3 is valid, sets D6 to 1 if valid, 0 if invalid *
+* An and #<data> are not valid E/A modes, all other E/A modes are valid *
+* called from the opcodes MOVE (dst), ORI, NEG, EOR, BCLR, CMPI *
+
+    JSR SET_EA_INVALID * initialize valid/invalid flag to 0 *
+
+    JSR IS_DN * checks if the E/A is Dn, sets D6 to 1 if valid *
+    
+    JSR IS_AN_INDIRECT * checks if the E/A is (An), sets D6 to 1 if valid *
+    
+    JSR IS_AN_INC * checks if the E/A is (An)+ , sets D6 to 1 if valid *
+    
+    JSR IS_AN_DEC * checks if the E/A is -(SP), sets D6 to 1 if valid *
+    
+    JSR IS_WORD * checks if the E/A is (xxx).W, sets D6 to 1 if valid *
+    
+    JSR IS_LONG * checks if the E/A is (XXX).L, sets D6 to 1 if valid *
+
+    RTS * return *
+
+EA_GROUP4: * always call with JSR, since returns with RTS *
+* checks if the 6 bit E/A in [mode] [reg] order in D3 is valid, sets D6 to 1 if valid, 0 if invalid *
+* valid E/A modes for MOVEM (reg to mem) only (An, Dn, (An)+, #<data> are not valid E/A modes *
+* called by MOVEM (reg to mem) only *
+    
+    JSR SET_EA_INVALID * initialize valid/invalid flag to 0 *
+    
+    JSR IS_AN_INDIRECT * checks if the E/A is (An), sets D6 to 1 if valid *
+    
+    JSR IS_AN_DEC * checks if the E/A is -(SP), sets D6 to 1 if valid *
+    
+    JSR IS_WORD * checks if the E/A is (xxx).W, sets D6 to 1 if valid *
+    
+    JSR IS_LONG * checks if the E/A is (xxx).L, sets D6 to 1 if valid *
+
+    RTS * return *
+
+EA_GROUP5: * always call with JSR, since returns with RTS *
+* checks if the 6 bit E/A in [mode] [reg] order in D3 is valid, sets D6 to 1 if valid, 0 if invalid *
+* valid E/A modes for MOVEM (mem to reg) only (An, Dn, -(SP), #<data> are not valid E/A modes *
+* called by MOVEM (mem to reg only) *
+    
+    JSR SET_EA_INVALID * initialize valid/invalid flag to 0 *
+    
+    JSR IS_AN_INDIRECT * checks if the E/A is (An), sets D6 to 1 if valid *
+    
+    JSR IS_AN_INC * checks if the E/A is (An)+ , sets D6 to 1 if valid *
+    
+    JSR IS_WORD * checks if the E/A is (xxx).W, sets D6 to 1 if valid *
+    
+    JSR IS_LONG * checks if the E/A is (xxx).L, sets D6 to 1 if valid *
+
+    RTS * return *
+
+EA_GROUP6: * always call with JSR, since returns with RTS *
+* checks if the 6 bit E/A in [mode] [reg] order in D3 is valid, sets D6 to 1 if valid, 0 if invalid *
+* valid E/A modes for SUBQ only #<data> is not valid E/A mode * 
+* Called by SUBQ only *
+
+    JSR SET_EA_INVALID * initialize valid/invalid flag to 0 *
+
+    JSR IS_DN * checks if the E/A is Dn, sets D6 to 1 if valid *
+
+    JSR IS_AN * checks if the E/A is An, sets D6 to 1 if valid *
+    
+    JSR IS_AN_INDIRECT * checks if the E/A is (An), sets D6 to 1 if valid *
+    
+    JSR IS_AN_INC * checks if the E/A is (An)+ , sets D6 to 1 if valid *
+    
+    JSR IS_AN_DEC * checks if the E/A is -(SP), sets D6 to 1 if valid *
+    
+    JSR IS_WORD * checks if the E/A is (xxx).W, sets D6 to 1 if valid *
+    
+    JSR IS_LONG * checks if the E/A is (xxx).L, sets D6 to 1 if valid *
+    
+    RTS * return *
+
+EA_GROUP7: * always call with JSR, since returns with RTS *
+* checks if the 6 bit E/A in [mode] [reg] order in D3 is valid, sets D6 to 1 if valid, 0 if invalid *
+* An, Dn, #<data> are not valid E/A modes, all other E/A modes are valid *
+* Called by ADD (right is E/A), SUB (right is E/A), OR (right is E/A), LSR (mem), LSL (mem), ASR (mem), ASL (mem), ROL (mem), ROR (mem) *
+
+    JSR SET_EA_INVALID * initialize valid/invalid flag to 0 *
+    
+    JSR IS_AN_INDIRECT * checks if the E/A is (An), sets D6 to 1 if valid *
+    
+    JSR IS_AN_INC * checks if the E/A is (An)+ , sets D6 to 1 if valid *
+    
+    JSR IS_AN_DEC * checks if the E/A is -(SP), sets D6 to 1 if valid *
+    
+    JSR IS_WORD * checks if the E/A is (xxx).W, sets D6 to 1 if valid *
+    
+    JSR IS_LONG * checks if the E/A is (xxx).L, sets D6 to 1 if valid *
+    
+    RTS * return *
+    
+EA_GROUP8: * always call with JSR, since returns with RTS *
+* checks if the 6 bit E/A in [mode] [reg] order in D3 is valid, sets D6 to 1 if valid, 0 if invalid *
+* Dn, An, (An)+, -(SP), #<data> are not valid E/A modes, all other E/A modes are valid *
+* Called by JSR, LEA *
+    
+    JSR SET_EA_INVALID * initialize valid/invalid flag to 0 *
+    
+    JSR IS_AN_INDIRECT * checks if the E/A is (An), sets D6 to 1 if valid *
+    
+    JSR IS_WORD * checks if E/A is (xxx).W, sets D6 to 1 if valid *
+    
+    JSR IS_LONG * checks if E/A is (xxx).L, sets D6 to 1 if valid *
+    
+    RTS * return *
+
+PRINT_EA:
+* prints the 6 bit E/A in [mode] [reg] order in D3 *
+
+    JSR SET_EA_INVALID * initialize the valid/invalid flag to 0 *
+    JSR IS_DN * checks if the E/A is Dn, sets D6 to 1 if valid *
+    
+    CMP.B #1, D6
+    BEQ PRINT_DN * prints the Dn if D6 is valid *
+    
+    JSR IS_AN * checks if the E/A is An, sets D6 to 1 if valid *
+    
+    CMP.B #1, D6
+    BEQ PRINT_AN * prints the An if D6 is valid *
+    
+    JSR IS_AN_INDIRECT * checks if the E/A is (An), sets D6 to 1 if valid *
+    
+    CMP.B #1, D6
+    BEQ PRINT_AN_INDIRECT * prints the (An) if D6 is valid *
+    
+    JSR IS_AN_INC * checks if the E/A is (An)+, sets D6 to 1 if valid *
+    
+    CMP.B #1, D6
+    BEQ PRINT_AN_INC * prints the (An)+ if D6 is valid *
+    
+    JSR IS_AN_DEC * checks if the E/A is -(SP), sets D6 to 1 if valid *
+    
+    CMP.B #1, D6
+    BEQ PRINT_AN_DEC * prints the -(SP) if D6 is valid *
+    
+    JSR IS_WORD * checks if the E/A is (xxx).W, sets D6 to 1 if valid *
+    
+    CMP.B #1, D6
+    BEQ PRINT_EA_WORD * prints the (XXX).W if D6 is valid *
+    
+    JSR IS_LONG * checks if the E/A is (XXX).L, sets D6 to 1 if valid *
+    
+    CMP.B #1, D6 
+    BEQ PRINT_EA_LONG * print the (xxx).L if D6 is valid *
+    
+    JSR IS_IMMEDIATE * checks if the E/A is #<data>, sets D6 to 1 if valid *
+    
+    CMP.B #1, D6
+    BEQ PRINT_IMMEDIATE_EA * prints the #<data> if D6 is valid *
+    
+    RTS * return, only reaches here if the E/A is invalid -> doesn't print anything when E/A invalid *
+
+PRINT_DN:
+* prints the 6 bit E/A in [mode] [reg] order in D3 *
+
+    * print
+    * display D *
+    LEA OUT_D, A1 * loads D into A1
+    MOVE.B #14, D0
+    TRAP #15
+    
+    MOVE.L D3, D4 * copies reg and mode to D4
+    
+    AND.L #$000000007, D4 * masks everything but the register nuumber
+    
+    MOVE.B D4, D1 * loads the data register # for output
+    MOVE.B #3, D0 * trap task 3 displays a number to system out
+    TRAP #15 * calls trap #15
+    
+    RTS * return *
+
+PRINT_AN:
+* prints the 6 bit E/A in [mode] [reg] order in D3 *
+
+    * print
+    
+    * print
+    * display A *
+    LEA OUT_A, A1 * loads A into A1
+    MOVE.B #14, D0
+    TRAP #15
+    
+    * display register # *
+    MOVE.L D3, D4 * copies reg and mode to D4
+    
+    AND.L #$000000007, D4 * masks everything but the register nuumber
+    
+    CLR.L D1 * clear D1
+    
+    MOVE.B D4, D1 * loads the data register # for output
+    MOVE.B #3, D0 * trap task 3 displays a number to system out
+    TRAP #15 * calls trap #15
+    
+    RTS * return *
+
+PRINT_AN_INDIRECT:
+* prints the 6 bit E/A in [mode] [reg] order in D3 *
+
+    * print
+    * display left paren '('
+    LEA LEFT_PAREN, A1 * loads '(' into A1
+    MOVE.B #14, D0
+    TRAP #15
+    
+    * display A *
+    LEA OUT_A, A1 * loads A into A1
+    MOVE.B #14, D0
+    TRAP #15
+    
+    * display register # *
+    MOVE.L D3, D4 * copies reg and mode to D4
+    
+    AND.L #$000000007, D4 * masks everything but the register nuumber
+    
+    CLR.L D1 * clear D1
+    
+    MOVE.B D4, D1 * loads the data register # for output
+    MOVE.B #3, D0 * trap task 3 displays a number to system out
+    TRAP #15 * calls trap #15
+    
+    * display right paren ')'
+    LEA RIGHT_PAREN, A1 * loads ')' into A1
+    MOVE.B #14, D0
+    TRAP #15
+    
+    RTS * return *
+
+PRINT_AN_INC:
+* prints the 6 bit E/A in [mode] [reg] order in D3 *
+
+    * print
+    JSR PRINT_AN_INDIRECT
+    
+    * display '+'
+    LEA PLUS, A1 * loads '+' into A1
+    MOVE.B #14, D0
+    TRAP #15
+    
+    RTS * return *
+
+PRINT_AN_DEC:
+* prints the 6 bit E/A in [mode] [reg] order in D3 *
+
+    * print '-'
+    LEA MINUS, A1 * loads '-' into A1
+    MOVE.B #14, D0
+    TRAP #15
+    
+    JSR PRINT_AN_INDIRECT
+    
+    RTS * return *
+
+PRINT_EA_WORD:
+* prints the 6 bit E/A in [mode] [reg] order in D3 *
+
+    * print '$'
+    LEA DOLLAR, A1 * loads '$' into A1
+    MOVE.B #14, D0
+    TRAP #15
+    
+    MOVEA.L A0, A4 * copy current instruction address to A4
+    
+    CLR.L D4 * clear D4
+    MOVE.W (A4), D4 * move the word of memory from A4 to D4
+    
+    JSR OUTPUT_WORD * prints the word in D4 to output
+    
+    RTS * return *
+
+PRINT_EA_LONG:
+* prints the 6 bit E/A in [mode] [reg] order in D3 *
+
+    * print
+    * print '$'
+    LEA DOLLAR, A1 * loads '$' into A1
+    MOVE.B #14, D0
+    TRAP #15
+    
+    MOVEA.L A0, A4 * copy current instruction address to A4
+    
+    ADD.W #16, A4 * increment A4 by 16 bits (1 word)
+    
+    CLR.L D4 * clear D4
+    MOVE.W (A4), D4 * move the word of memory from A4 to D4
+    
+    JSR OUTPUT_WORD * prints the word in D4 to output
+    
+    ADD.W #16, A4 * increment A4 by 16 bits (1 word)
+    MOVE.W (A4), D4 * move the word of memory from A4 to D4
+    
+    JSR OUTPUT_WORD * prints the word in D4 to output
+    
+    RTS * return *
+
+PRINT_IMMEDIATE_EA:
+* prints the 6 bit E/A in [mode] [reg] order in D3 *
+
+    * print
+    * print '#'
+    LEA HASH, A1 * loads '#' into A1
+    MOVE.B #14, D0
+    TRAP #15
+    
+    MOVEA.L A0, A4 * copy current instruction address to A4
+    ADD.W #16, A4 * increment A4 by 16 bits (1 word)
+    
+    CLR.L D4 * clear D4
+    MOVE.W (A4), D4 * move the word of memory from A4 to D4
+    
+    JSR OUTPUT_WORD * prints the Word in D4 to output
+    
+    RTS * return *
+
+IS_DN:
+* checks if 6 bit E/A in [mode] [reg] order in D3 is Dn, sets D6 to 1 if valid *
+
+    MOVE.L D3, D4 * save the E/A from D3 in D4
+
+    * mode is bits 3-5, check if set to 000 *
+    AND.L #$00000038, D4 * masks all bits but mode
+
+    CMP.W #$0000, D4 * checks if bits 3-5 are [000]
+    BEQ SET_EA_VALID
+    
+    RTS * return, only reaches here if EA is not Dn *
+
+IS_AN:
+* checks if 6 bit E/A in [mode] [reg] order in D3 is An, sets D6 to 1 if valid *
+    
+    MOVE.L D3, D4 * save the E/A from D3 in D4
+    
+    * mode is bits 3-5, check if set to 001
+    AND.L #$00000038, D4 * masks all bits but mode
+
+    CMP.W #$0008, D4 * check if bits 3-5 are [001]
+    BEQ SET_EA_VALID 
+    
+    RTS * return, only reaches here if EA is not An *
+
+IS_AN_INDIRECT:
+* checks if 6 bit E/A in [mode] [reg] order in D3 is (An), sets D6 to 1 if valid *
+
+    MOVE.L D3, D4 * save the E/A from D3 in D4
+
+    * mode is bits 3-5, check if set to 010
+    AND.L #$00000038, D4 * masks all bits but mode
+    
+    CMP.W #$0010, D4 * check if bits 3-5 are [010]
+    BEQ SET_EA_VALID
+    
+    RTS * return, only reaches here if not (An) *
+
+IS_AN_INC:
+* checks if 6 bit E/A in [mode] [reg] order in D3 is (An)+, sets D6 to 1 if valid *
+
+    MOVE.L D3, D4 * save the E/A from D3 in D4
+
+    * mode is bits 3-5, check if set to 011
+    AND.L #$00000038, D4 * masks all bits but mode
+    
+    CMP.W #$0018, D4 * check if bits 3-5 are [011]
+    BEQ SET_EA_VALID
+    
+    RTS * return, only reaches here if not (An)+ *    
+
+IS_AN_DEC:
+* checks if 6 bit E/A in [mode] [reg] order in D3 is -(An), sets D6 to 1 if valid *
+
+    MOVE.L D3, D4 * save the E/A from D3 in D4
+    
+    * mode is bits 3-5, check if set to 100
+    AND.L #$00000038, D4 * masks all bits but mode
+    
+    CMP.W #$0020, D4 * check if bits 3-5 are [100]
+    BEQ SET_EA_VALID
+    
+    RTS * return, only reaches here if not -(An) *
+
+IS_WORD:
+* checks if 6 bit E/A in [mode] [reg] order in D3 is (XXX).W, sets D6 to 1 if valid *
+
+    MOVE.L D3, D4 * save the E/A from D3 in D4
+    
+    * check mode and register, set to 111 000
+    AND.L #$0000003F, D4 * masks all bits but mode and register
+    
+    CMP.W #$0038, D4 * check if bits 5-0 are 111 000
+    BEQ SET_EA_VALID
+
+    RTS * return, only reaches here if not (XXX).W *
+
+IS_LONG:
+* checks if 6 bit E/A in [mode] [reg] order in D3 is (XXX).L, sets D6 to 1 if valid *
+    
+    MOVE.L D3, D4 * save the E/A from D3 in D4
+    
+    * check mode and register, set to 111 001
+    AND.L #$0000003F, D4 * masks all bits but mode and register
+    
+    CMP.W #$0039, D4 * check if bits 5-0 are 111 001
+    BEQ SET_EA_VALID
+    
+    RTS * return, only reaches here if not (XXX).L *
+
+IS_IMMEDIATE:
+* checks if 6 bit E/A in [mode] [reg] order in D3 is #<data>, sets D6 to 1 if vvalid *
+
+    MOVE.L D3, D4 * save the E/A from D3 in D4
+    
+    * check mode and register, set to 111 100
+    AND.L #$0000003F, D4 * masks all bits but mode and register
+
+    CMP.W #$003C, D4 * check if bits 5-0 are 111 100
+    BEQ SET_EA_VALID
+
+    RTS * return, only reaches here if not #<data> *
+
+SET_EA_INVALID:
+
+    MOVE.L #0, D6
+    RTS * return *
+
+SET_EA_VALID:
+
+    MOVE.L #1, D6 
+    RTS * return *
+
 DONE: ; done
+
+
 
 * comment out for final program. Utility for gracefull ending during testing.
 graceful_end:
@@ -2457,6 +2922,14 @@ graceful_end:
 * test code down here -> memory address ORG at $4000
 
     ORG $4000
+    CMP.B D2, D1
+    CMP.W A0, D2
+    CMP.L (A2), D3
+    CMP.B (A3)+, D4
+    CMP.B -(A1), D6
+    CMP.B #14, D6 * not correct
+    CMP.B $0020, D6 * not correct
+    CMP.B $00004000, D7 * not correct
     MOVEM.L D2, (A1)
     MOVEM.W (A3), D2
     DIVU.W D1, D2 * not implemented -> should be DATA YYYY
@@ -2484,7 +2957,6 @@ graceful_end:
     ADD.L (A3), D4
     OR.B (A2), D3
     EOR.W D1, D2
-    CMP.B D2, D1
     BGE DONE
     BLT DONE
     MOVEA.W D3, A2
@@ -2586,6 +3058,8 @@ HASH DC.B '#', 0
 DOLLAR DC.B '$', 0
 LEFT_PAREN DC.B '(', 0
 RIGHT_PAREN DC.B ')', 0
+PLUS DC.B '+', 0
+MINUS DC.B '-', 0
 
 * Constant Hex Numbers for XXXX XXXX DATA YYYY 
 OUT_0 DC.B '0', 0
@@ -2611,6 +3085,8 @@ ENDADR          DS.B    8
 
 THE_END:
     END    START        ; last line of source
+
+
 
 
 
