@@ -913,8 +913,13 @@ MOVEA:
     CMP.B #1, D2 
     BEQ IO_INVALID * size 01 is invalid
     
-    * call E/A to get effective Addresses *
-        * if E/A not valid call IO_INVALID *
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP1 * D6 will be set to 1 if valid, 0 if invalid
+        
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
         
     * print MOVEA *
     LEA MOVEA_OUT, A1
@@ -925,6 +930,9 @@ MOVEA:
     JSR PRINTSPACE * print space *
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     LEA COMMA, A1
     JSR PRINT_VAR * print the last var loaded into A1 (comma)
@@ -983,8 +991,13 @@ LS_MEM:
     BRA IO_INVALID * this shouldn't be possible
     
 LSL_MEM:
-    * call E/A to get effective Address *
-        * if E/A not valid call IO_INVALID
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP7 * D6 will be set to 1 if valid, 0 if invalid
+        
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
     
     * prints LSL *
     LEA LSL_OUT, A1
@@ -996,6 +1009,9 @@ LSL_MEM:
     JSR PRINTSPACE * print space *
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * Increment address pointer
     JSR INCR_ADDRESS
@@ -1005,8 +1021,13 @@ LSL_MEM:
     BRA IO_VALID
 
 LSR_MEM:
-    * call E/A to get effective Address *
-        * if E/A not valid call IO_INVALID
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP7 * D6 will be set to 1 if valid, 0 if invalid
+        
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
         
     * prints LSR *
     LEA LSR_OUT, A1
@@ -1018,6 +1039,9 @@ LSR_MEM:
     JSR PRINTSPACE * print space *
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * Increment address pointer *
     JSR INCR_ADDRESS
@@ -1042,8 +1066,13 @@ AS_MEM:
     BRA IO_INVALID * this shouldn't be possible
     
 ASL_MEM:
-    * call E/A to get effective Address *
-        * if E/A not valid call IO_INVALID
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP7 * D6 will be set to 1 if valid, 0 if invalid
+        
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
         
     * print ASL *
     LEA ASL_OUT, A1
@@ -1056,6 +1085,9 @@ ASL_MEM:
     JSR PRINTSPACE
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * Increment address pointer
     JSR INCR_ADDRESS
@@ -1065,8 +1097,13 @@ ASL_MEM:
     BRA IO_VALID
     
 ASR_MEM:
-    * call E/A to get effective Address *
-        * if E/A not valid call IO_INVALID
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP7 * D6 will be set to 1 if valid, 0 if invalid
+        
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
         
     * print ASR *
     LEA ASR_OUT, A1
@@ -1079,6 +1116,9 @@ ASR_MEM:
     JSR PRINTSPACE
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * Increment address pointer
     JSR INCR_ADDRESS
@@ -1103,8 +1143,13 @@ RO_MEM:
     BRA IO_INVALID * this shouldn't be possible
     
 ROL_MEM:
-    * call E/A to get effective Address *
-        * if E/A not valid call IO_INVALID
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP7 * D6 will be set to 1 if valid, 0 if invalid
+        
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
         
     * print ROL *
     LEA ROL_OUT, A1
@@ -1117,6 +1162,9 @@ ROL_MEM:
     JSR PRINTSPACE
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * Increment address pointer
     JSR INCR_ADDRESS
@@ -1126,8 +1174,13 @@ ROL_MEM:
     BRA IO_VALID
         
 ROR_MEM:
-    * call E/A to get effective Address *
-        * if E/A not valid call IO_INVALID
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP7 * D6 will be set to 1 if valid, 0 if invalid
+        
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
         
     * print ROR *
     LEA ROR_OUT, A1
@@ -1140,6 +1193,9 @@ ROR_MEM:
     JSR PRINTSPACE
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * Increment address pointer
     JSR INCR_ADDRESS
@@ -1453,8 +1509,13 @@ RTS:
     BRA IO_VALID
 
 MULS:
-    * Call E/A to get effective address
-        * If E/A not valid call IO_INVALID
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP2 * D6 will be set to 1 if valid, 0 if invalid
+        
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
         
     * print MULS *
     LEA MULS_OUT, A1
@@ -1466,6 +1527,9 @@ MULS:
     JSR PRINTSPACE * print space *
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * print comma *
     LEA COMMA, A1
@@ -1487,8 +1551,13 @@ MULS:
     BRA IO_VALID
 
 DIVS:
-    * Call E/A to get effective address
-        * If E/A not valid call IO_INVALID
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP2 * D6 will be set to 1 if valid, 0 if invalid
+        
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
         
     * print DIVS *
     LEA DIVS_OUT, A1
@@ -1500,6 +1569,9 @@ DIVS:
     JSR PRINTSPACE * print space *
 
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * print comma *
     LEA COMMA, A1
@@ -1522,6 +1594,14 @@ DIVS:
 
 NEG:
 
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP3 * D6 will be set to 1 if valid, 0 if invalid
+        
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
+
     * isolate size field 
     JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
     DIVU.W #64, D2 * divide by 64 to bit shift right 6 bits
@@ -1535,11 +1615,14 @@ NEG:
     
     JSR TWOBITSIZE * call the 2 bit size function
     
+    JSR PRINTSPACE * print space *
+    
     JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
     
-    * Call E/A to get effective address, and print them to output
-
-        * If E/A not valid call IO_INVALID
+    * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
 
     JSR INCR_ADDRESS * Increment address pointer by 16 bits (2 bytes)
 
@@ -1551,25 +1634,49 @@ JSR:
     
     JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
     
-    * Call E/A to get effective address for last 6 bits loaded in D2
-    
-        * If E/A not valid call IO_INVALID
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP8 * D6 will be set to 1 if valid, 0 if invalid
+        
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
     
     LEA JSR_OUT, A1 * load JSR to A1
+    JSR PRINT_VAR * print JSR to output
+    
+    JSR PRINTSPACE * print a space
+    
+    * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     JSR INCR_ADDRESS * Increment address pointer by 16 bits (2 bytes)
-
+    
+    * print a line return *
+    LEA SPACE, A1
     BRA IO_VALID * Call I/O to output
 
 LEA:
 
-    * Call E/A to get effective address
-        * if E/A not valid call IO_INVALID 
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP8 * D6 will be set to 1 if valid, 0 if invalid
+        
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
         
     LEA LEA_OUT, A1 * load LEA to A1
     JSR PRINT_VAR * prints the last thing loaded into A1
     
-    * display E/A to output
+    JSR PRINTSPACE * print space
+    
+    * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     JSR PRINTSPACE * display a space *
     
@@ -1689,7 +1796,12 @@ MOVEMSIZE:
 MOVEM_REG_TO_MEM:
 
     * Call E/A to get effective addresses
-        * If E/A not valid call IO_INVALID
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP4 * D6 will be set to 1 if valid, 0 if invalid
+        
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
     
     * print MOVEM *
     LEA MOVEM_OUT, A1
@@ -1709,6 +1821,9 @@ MOVEM_REG_TO_MEM:
     JSR PRINTSPACE * print space *
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
 
     * Increment address pointer by 32 bits (4 bytes)
     JSR INC32
@@ -1720,7 +1835,12 @@ MOVEM_REG_TO_MEM:
 MOVEM_MEM_TO_REG:
     
     * Call E/A to get effective addresses
-        * If E/A not valid call IO_INVALID
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP5 * D6 will be set to 1 if valid, 0 if invalid
+        
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
     
     * print MOVEM *
     LEA MOVEM_OUT, A1
@@ -1732,6 +1852,9 @@ MOVEM_MEM_TO_REG:
     JSR PRINTSPACE * print space *
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * print comma *
     LEA COMMA, A1
@@ -1795,8 +1918,13 @@ CMP:
 EOR:
     * Opmode is loaded into D2 *
 
-    * Call E/A to get effective address *
-        * if E/A not valid call IO_INVALID
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP3 * D6 will be set to 1 if valid, 0 if invalid
+        
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
     
     * print EOR *
     LEA EOR_OUT, A1
@@ -1817,7 +1945,12 @@ EOR:
     LEA COMMA, A1
     JSR PRINT_VAR * print the last var loaded into A1 (comma)
     
+    JSR PRINTSPACE * print space *
+    
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * Increment address pointer by 16 bits (2 bytes) *
     JSR INCR_ADDRESS
@@ -1829,8 +1962,13 @@ EOR:
 OR_LEFT:
     * Opmode is loaded into D2 *
 
-    * Call E/A to get effective address *
-        * if E/A not valid call to IO_INVALID
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP2 * D6 will be set to 1 if valid, 0 if invalid
+        
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
         
     * Print OR *
     LEA OR_OUT, A1
@@ -1842,10 +1980,15 @@ OR_LEFT:
     JSR PRINTSPACE * print space *
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * print comma *
     LEA COMMA, A1
     JSR PRINT_VAR * print the last var loaded into A1 (comma)
+    
+    JSR PRINTSPACE * print space *
     
     * print Data register *
     JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
@@ -1863,8 +2006,13 @@ OR_LEFT:
 OR_RIGHT:
     * Opmode is loaded into D2 *
 
-    * Call E/A to get effective address *
-        * if E/A not valid call to IO_INVALID
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP7 * D6 will be set to 1 if valid, 0 if invalid
+        
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
     
     * Print OR *
     LEA OR_OUT, A1
@@ -1889,6 +2037,9 @@ OR_RIGHT:
     JSR PRINTSPACE
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * Increment address pointer by 16 bits (2 bytes) *
     JSR INCR_ADDRESS
@@ -1900,8 +2051,13 @@ OR_RIGHT:
 ADD_LEFT:
     * Opmode is loaded into D2 *
     
-    * Call E/A to get effective address *
-        * if E/A not valid call IO_INVALID *
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP1 * D6 will be set to 1 if valid, 0 if invalid
+        
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
         
     * Print ADD *
     LEA ADD_OUT, A1
@@ -1913,6 +2069,9 @@ ADD_LEFT:
     JSR PRINTSPACE * print space
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * print comma *
     LEA COMMA, A1
@@ -1936,8 +2095,13 @@ ADD_LEFT:
 ADD_RIGHT:
     * Opmode is loaded into D2 *
     
-    * Call E/A to get effective address *
-        * if E/A not valid call IO_INVALID *
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP7 * D6 will be set to 1 if valid, 0 if invalid
+        
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
 
     * Print ADD *
     LEA ADD_OUT, A1
@@ -1961,6 +2125,9 @@ ADD_RIGHT:
     JSR PRINTSPACE * print space
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * Increment address pointer by 16 bits (2 bytes) *
     JSR INCR_ADDRESS
@@ -1972,9 +2139,14 @@ ADD_RIGHT:
 SUB_LEFT:
     * Opmode is loaded into D2 *
 
-    * Call E/A to get effective address *
-        * if E/A not valid call IO_INVALID *
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP1 * D6 will be set to 1 if valid, 0 if invalid
         
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
+    
     * Print SUB *
     LEA SUB_OUT, A1
     JSR PRINT_VAR * prints the last var loaded to A1 (SUB)
@@ -1985,6 +2157,9 @@ SUB_LEFT:
     JSR PRINTSPACE * print space
 
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * print comma *
     LEA COMMA, A1
@@ -2008,8 +2183,13 @@ SUB_LEFT:
 SUB_RIGHT:
     * Opmode is loaded into D2 *
 
-    * Call E/A to get effective address *
-        * if E/A not valid call IO_INVALID *
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP7 * D6 will be set to 1 if valid, 0 if invalid
+   
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
    
     * Print SUB *
     LEA SUB_OUT, A1
@@ -2033,6 +2213,9 @@ SUB_RIGHT:
     JSR PRINTSPACE * print space
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * Increment address pointer by 16 bits (2 bytes) *
     JSR INCR_ADDRESS
@@ -2045,9 +2228,14 @@ SUBQ:
 
     JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
     
-    * Call E/A to get effective address *
-        * if E/A not valid call IO_INVALID *
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP6 * D6 will be set to 1 if valid, 0 if invalid
         
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID    
+    
     * Print SUBQ *
     LEA SUBQ_OUT, A1
     JSR PRINT_VAR * print the last var loaded into A1 (SUBQ)
@@ -2075,6 +2263,9 @@ SUBQ:
     JSR PRINTSPACE
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * Increment address pointer by 16 bits (2 bytes) *
     JSR INCR_ADDRESS
@@ -2084,8 +2275,13 @@ SUBQ:
     BRA IO_VALID
 
 ORI:
-    * Call E/A to get effective address *
-        * if E/A not valid call IO_INVALID *
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP3 * D6 will be set to 1 if valid, 0 if invalid
+    
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
         
     * Print ORI *
     LEA ORI_OUT, A1
@@ -2112,6 +2308,9 @@ ORI:
     JSR PRINTSPACE * print space *
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * increment address pointer by either 32 bits or 48 bits *
     JSR INCR_32_OR_48
@@ -2191,8 +2390,13 @@ LONG_IMMEDIATE:
 
 CMPI:
 
-    * Call E/A to get effective address *
-        * If E/A not valid call IO_INVALID *
+    * Call E/A to get effective addresses
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP3 * D6 will be set to 1 if valid, 0 if invalid
+    
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
         
     * Print CMPI *
     LEA CMPI_OUT, A1
@@ -2219,6 +2423,9 @@ CMPI:
     JSR PRINTSPACE * print space *
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * increment address pointer by 32 bits or 48 bits depending on size *
     JSR INCR_32_OR_48
@@ -2244,8 +2451,12 @@ BCLR_STATIC:
     BNE IO_INVALID * if not equal, invalid instruction
 
     * Call E/A to get effective addresses
-
-        * If E/A not valid call IO_INVALID
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP3 * D6 will be set to 1 if valid, 0 if invalid
+    
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
     
     * Print BCLR *
     LEA BCLR_OUT, A1
@@ -2266,6 +2477,9 @@ BCLR_STATIC:
     JSR PRINTSPACE
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
 
     * Increment address pointer by 32 bits (4 bytes) *
     JSR INC32
@@ -2277,8 +2491,12 @@ BCLR_STATIC:
 BCLR_DYNAMIC:
 
     * Call E/A to get effective addresses
-
-        * If E/A not valid call IO_INVALID
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP3 * D6 will be set to 1 if valid, 0 if invalid
+    
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
         
     * print BCLR *
     LEA BCLR_OUT, A1
@@ -2301,9 +2519,14 @@ BCLR_DYNAMIC:
     JSR PRINTSPACE
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
 
     * Increment address pointer by 16 bits
     JSR INCR_ADDRESS
+    
+    * call to increment address more based on E/A
 
     * Call I/O to output
     LEA SPACE, A1
@@ -2313,9 +2536,13 @@ ADDA:
 * opmode is loaded into D2 (either 011 for Word, or 111 for Long) *
 
     * Call E/A to get effective addresses
-
-        * If E/A not valid call IO_INVALID
-        
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy the instruction to D3
+    JSR EA_GROUP1 * D6 will be set to 1 if valid, 0 if invalid
+    
+    CMP.B #0, D5    * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
+    
     * print ADDA *
     LEA ADDA_OUT, A1
     JSR PRINT_VAR * prints the last var loaded to A1 (ADDA)
@@ -2326,6 +2553,9 @@ ADDA:
     JSR PRINTSPACE * print space *
     
     * print E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     * print comma *
     LEA COMMA, A1
@@ -2337,8 +2567,10 @@ ADDA:
     AND.L #$00000007, D2 ; mask the division remainder
     JSR PRINTADDRESSREGISTER * call to PRINTADDRESSREGISTER
 
-    * Increment address pointer
+    * Increment address pointer by 16 bits
     JSR INCR_ADDRESS
+    
+    * call to increment address pointer more based on E/A
 
     * Call I/O to output
     LEA SPACE, A1
@@ -2644,6 +2876,8 @@ PRINT_DN:
     
     AND.L #$000000007, D4 * masks everything but the register nuumber
     
+    CLR.L D1 * clear D1
+    
     MOVE.B D4, D1 * loads the data register # for output
     MOVE.B #3, D0 * trap task 3 displays a number to system out
     TRAP #15 * calls trap #15
@@ -2741,6 +2975,8 @@ PRINT_EA_WORD:
     
     MOVEA.L A0, A4 * copy current instruction address to A4
     
+    ADD.W #2, A4 * increment A4 by 16 bits (2 bytes)
+    
     CLR.L D4 * clear D4
     MOVE.W (A4), D4 * move the word of memory from A4 to D4
     
@@ -2759,14 +2995,14 @@ PRINT_EA_LONG:
     
     MOVEA.L A0, A4 * copy current instruction address to A4
     
-    ADD.W #16, A4 * increment A4 by 16 bits (1 word)
+    ADD.W #2, A4 * increment A4 by 16 bits (2 bytes)
     
     CLR.L D4 * clear D4
     MOVE.W (A4), D4 * move the word of memory from A4 to D4
     
     JSR OUTPUT_WORD * prints the word in D4 to output
     
-    ADD.W #16, A4 * increment A4 by 16 bits (1 word)
+    ADD.W #2, A4 * increment A4 by 16 bits (2 bytes)
     MOVE.W (A4), D4 * move the word of memory from A4 to D4
     
     JSR OUTPUT_WORD * prints the word in D4 to output
@@ -2783,12 +3019,12 @@ PRINT_IMMEDIATE_EA:
     TRAP #15
     
     MOVEA.L A0, A4 * copy current instruction address to A4
-    ADD.W #16, A4 * increment A4 by 16 bits (1 word)
+    ADD.W #2, A4 * increment A4 by 16 bits (2 bytes)
     
-    CLR.L D4 * clear D4
-    MOVE.W (A4), D4 * move the word of memory from A4 to D4
-    
-    JSR OUTPUT_WORD * prints the Word in D4 to output
+    CLR.L D1 * clear D1
+    MOVE.W (A4), D1 * move the word of memory from A4 to D1
+    MOVE.B #3, D0 * trap task 3 displays a number to system out
+    TRAP #15 * calls trap #15
     
     RTS * return *
 
