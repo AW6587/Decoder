@@ -1818,40 +1818,108 @@ LEA:
 
 BCS:
     
-    JSR BRANCHDISPLACEMENT
-    
     * load BCS to output *
     LEA BCS_OUT, A1
+    JSR PRINT_VAR * prints BCS to output
+    
+    JSR PRINTSPACE * prints a space
+    
+    JSR PRINTDISPLACEMENT * prints displacement
+    
+    JSR BRANCHDISPLACEMENT * increments address pointer to next instruction by the appropriate amount
+    
+    * print a line return *
+    LEA SPACE, A1
     BRA IO_VALID
 
 BGE:
-    JSR BRANCHDISPLACEMENT
     
     * load BGE to output *
     LEA BGE_OUT, A1
+    JSR PRINT_VAR * prints BGE to output
+    
+    JSR PRINTSPACE * prints a space
+    
+    JSR PRINTDISPLACEMENT * prints displacement
+    
+    JSR BRANCHDISPLACEMENT * increments address pointer to next instruction by the appropriate amount
+    
+    * print a line return *
+    LEA SPACE, A1
     BRA IO_VALID
     
 BLT:
 
-    JSR BRANCHDISPLACEMENT
-
     * load BLT to output *
     LEA BLT_OUT, A1
+    JSR PRINT_VAR * prints BLT to output
+    
+    JSR PRINTDISPLACEMENT * prints displacement
+    
+    JSR BRANCHDISPLACEMENT * increments address pointer to next instruction by the appropriate amount
+    
+    * print a line return *
+    LEA SPACE, A1
     BRA IO_VALID
 
 BVC:
-    JSR BRANCHDISPLACEMENT
-
+    
     * load BVC to output *
     LEA BVC_OUT, A1
+    JSR PRINT_VAR * prints BVC to output
+    
+    JSR PRINTDISPLACEMENT * prints displacement
+    
+    JSR BRANCHDISPLACEMENT * increments address pointer to next instruction by the appropriate amount
+    
+    * print a line return *
+    LEA SPACE, A1
     BRA IO_VALID
 
 BRA:
-    JSR BRANCHDISPLACEMENT
-
+    
     * load BRA to output *
     LEA BRA_OUT, A1
+    JSR PRINT_VAR * prints BRA to output
+    
+    JSR PRINTDISPLACEMENT * prints displacement
+    
+    JSR BRANCHDISPLACEMENT * increments address pointer to next instruction by the appropriate amount
+    
+    * print a line return *
+    LEA SPACE, A1
     BRA IO_VALID
+
+PRINTDISPLACEMENT:
+* for the opcodes BCS, BGE, BLT, BVC, and BRA, (the Bcc opcodes), *
+
+    JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
+    
+    AND.W #$00FF, D2 * mask the first 8 bits of instruction to leave the 8 bit displacement
+    
+    CMP.B #$00, D2     * check 8 bit displacement = $00
+    BEQ PRINT_32_DISPLACE          * if yes, print the 32 bit displacement (4 bytes)
+    
+    CMP.B #$FF, D2     * check if 8 bit displacement = $FF
+    BEQ PRINT_48_DISPLACE          * if yes, print the 48 bit displacement (6 bytes)
+        
+    * else increment by 16 bits (2 bytes)
+    BRA PRINT_16_DISPLACE * Increment address pointer by 16 bits (2 bytes)
+    
+PRINT_32_DISPLACE:
+* print the amount of displacement *
+
+    RTS * return *
+
+PRINT_48_DISPLACE:
+* prints the amount of displacement *
+
+    RTS * return *
+
+PRINT_16_DISPLACE:
+* prints the amount of displacement *
+
+    RTS * return *
 
 BRANCHDISPLACEMENT: * only call this method with JSR, since it returns with RTS *
 * for the opcodes BCS, BGE, BLT, BVC, and BRA, (the Bcc opcodes), *
