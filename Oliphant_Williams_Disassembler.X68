@@ -3522,7 +3522,7 @@ graceful_end:
 * test code down here -> memory address ORG at $4000
 
     ORG $4000
-    MOVE.W (A0), (A1) * destination is printing as a data register
+    MOVE.W (A0), (A1)
     MOVE.B D2, D1
     MOVE.L A0, D2
     MOVE.B -(A2), D4
