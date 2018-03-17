@@ -1854,6 +1854,8 @@ BLT:
     LEA BLT_OUT, A1
     JSR PRINT_VAR * prints BLT to output
     
+    JSR PRINTSPACE * print a space
+    
     JSR PRINTDISPLACEMENT * prints displacement
     
     JSR BRANCHDISPLACEMENT * increments address pointer to next instruction by the appropriate amount
@@ -1868,6 +1870,8 @@ BVC:
     LEA BVC_OUT, A1
     JSR PRINT_VAR * prints BVC to output
     
+    JSR PRINTSPACE * print a space
+    
     JSR PRINTDISPLACEMENT * prints displacement
     
     JSR BRANCHDISPLACEMENT * increments address pointer to next instruction by the appropriate amount
@@ -1881,6 +1885,8 @@ BRA:
     * load BRA to output *
     LEA BRA_OUT, A1
     JSR PRINT_VAR * prints BRA to output
+    
+    JSR PRINTSPACE * print a space
     
     JSR PRINTDISPLACEMENT * prints displacement
     
@@ -1898,26 +1904,53 @@ PRINTDISPLACEMENT:
     AND.W #$00FF, D2 * mask the first 8 bits of instruction to leave the 8 bit displacement
     
     CMP.B #$00, D2     * check 8 bit displacement = $00
-    BEQ PRINT_32_DISPLACE          * if yes, print the 32 bit displacement (4 bytes)
+    BEQ PRINT_16_DISPLACE          * if yes, print the 16 bit displacement (4 bytes)
     
     CMP.B #$FF, D2     * check if 8 bit displacement = $FF
-    BEQ PRINT_48_DISPLACE          * if yes, print the 48 bit displacement (6 bytes)
+    BEQ PRINT_32_DISPLACE          * if yes, print the 32 bit displacement (6 bytes)
         
     * else increment by 16 bits (2 bytes)
-    BRA PRINT_16_DISPLACE * Increment address pointer by 16 bits (2 bytes)
+    BRA PRINT_8_DISPLACE * Increment address pointer by 16 bits (2 bytes)
     
-PRINT_32_DISPLACE:
+PRINT_16_DISPLACE:
 * print the amount of displacement *
 
+    * displacement is in 32 bits after instruction at A0
+    MOVEA.L A0, A6 * copy A0 into A6
+    ADD.W #2, A6 * adds 2 bytes to A6, so pointer is pointing at displacement
+
+    CLR.L D1 * clear D1
+    MOVE.W (A6), D1 * copy the displacement into D1
+
+    MOVE.B #3, D0 * move task 3 into trap task
+    TRAP #15 * trap 15
+
     RTS * return *
 
-PRINT_48_DISPLACE:
+PRINT_32_DISPLACE:
 * prints the amount of displacement *
+
+    * displacement is in 16 bits after instruction at A0
+    MOVEA.L A0, A6 * copy A0 into A6
+    ADD.W #2, A6 * adds 2 bytes to A6, so pointer is pointing at displacement
+    
+    CLR.L D1 * clear D1
+    MOVE.L (A6), D1 * copy the displacement into D1
+    
+    MOVE.B #3, D0 * move task 3 into trap task
+    TRAP #15 * trap 15
 
     RTS * return *
 
-PRINT_16_DISPLACE:
+PRINT_8_DISPLACE:
 * prints the amount of displacement *
+
+    * displacement is in last 8 bits of instruction at A0
+    CLR.L D1 * clear D1
+    MOVE.B (A0), D1 * copy the displacement into D1
+    
+    MOVE.B #3, D0 * move task 3 into trap task
+    TRAP #15 * trap 15
 
     RTS * return *
 
