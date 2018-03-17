@@ -881,7 +881,7 @@ MOVE:
     MOVE.W (A0), D3 * copy instruction into D3
     MOVE.W (A0), D4 * copy instruction into D4
     ROR.L #3, D3 * rotate right 3 bits to get mode into mode position
-    AND.L #$000000E0, D3 * mask everything except mode 
+    AND.L #$00000038, D3 * mask everything except mode 
     DIVU.W #512, D4 * divide D4 to get register in last 3 bits
     AND.L #$00000007, D4 * mask everything in D4 except register
     ADD.W D4, D3 * put register into D3 with mode
@@ -919,7 +919,7 @@ MOVE:
     MOVE.W (A0), D3 * copy instruction into D3
     MOVE.W (A0), D4 * copy instruction into D4
     ROR.L #3, D3 * rotate right 3 bits to get mode into mode position
-    AND.L #$000000E0, D3 * mask everything except mode 
+    AND.L #$00000038, D3 * mask everything except mode 
     DIVU.W #512, D4 * divide D4 to get register in last 3 bits
     AND.L #$00000007, D4 * mask everything in D4 except register
     ADD.W D4, D3 * put register into D3 with mode
@@ -3522,9 +3522,9 @@ graceful_end:
 * test code down here -> memory address ORG at $4000
 
     ORG $4000
+    MOVE.W (A0), (A1) * destination is printing as a data register
     MOVE.B D2, D1
     MOVE.L A0, D2
-    MOVE.W (A0), (A1) * destination is printing as a data register
     MOVE.B -(A2), D4
     MOVE.W $00001000, D6
     MOVE.B #12, D7
