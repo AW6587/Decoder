@@ -926,6 +926,13 @@ MOVE:
     
     JSR PRINT_EA
     
+    * load size into D2
+    JSR RELOAD_INSTRUCTION 
+    DIVU.W #$1000, D2 * divide the instruction to isolate the size
+    AND.L #$00000003, D2 * mask the division remainder
+    
+    JSR LOAD_MOVESIZE * sets D5 to 0 for .B, .W or 1 for .L in order to pass to E/A
+    
     * Use A5 to store the incremented address pointer
     * add standard 16 bit increment + source E/A increment + dest E/A increment *
     
@@ -963,6 +970,8 @@ MOVEA:
     
     JSR MOVESIZE (prints .W, or .L for the size)
     
+    JSR LOAD_MOVESIZE * sets D5 to 0 for .B, .W or 1 for .L in order to pass to E/A
+    
     JSR PRINTSPACE * print space *
     
     * print E/A *
@@ -982,6 +991,13 @@ MOVEA:
     
     JSR PRINTADDRESSREGISTER * prints the address register number in D2
     
+    * load size into D2
+    JSR RELOAD_INSTRUCTION 
+    DIVU.W #$1000, D2 * divide the instruction to isolate the size
+    AND.L #$00000003, D2 * mask the division remainder
+    
+    JSR LOAD_MOVESIZE * sets D5 to 0 for .B, .W or 1 for .L in order to pass to E/A
+    
     * reset D3 before incrementing Address pointer
     CLR.L D3 * clear D3
     MOVE.W (A0), D3 * copy instruction into D3
@@ -996,6 +1012,36 @@ MOVEA:
     LEA SPACE, A1
     BRA IO_VALID
    
+LOAD_MOVESIZE:
+* opmode is loaded into D2 *
+
+    CMP.B #1, D2 * check if opmode is 01 (.B)
+    BEQ SIZE_0
+
+    CMP.B #3, D2 * check if opmode is 11 (.W)
+    BEQ SIZE_0
+    
+    CMP.B #2, D2 * check if opmode is 10 (.L)
+    BEQ SIZE_1
+
+    RTS * return *
+
+SIZE_0:
+* sets D5 to 0 indicating the size is .B or .W
+
+    CLR.L D5
+    
+    RTS * return *
+   
+SIZE_1:
+* sets D5 to 1 indicating the size is .L 
+
+    CLR.L D5
+    
+    ADD.B #1, D5 * sets D5 to 1
+    
+    RTS * return *
+
 MEMORY_SHIFT:
     * one of the shifts (LSL, LSR, ASL, ASR, ROL, ROR) specified with a single E/A
         
@@ -1049,6 +1095,9 @@ LSL_MEM:
     * print word (only size available to memory shifts) *
     JSR PRINTWORD
     
+    * set size to word (0)
+    CLR.L D5
+    
     JSR PRINTSPACE * print space *
     
     * print E/A *
@@ -1085,6 +1134,9 @@ LSR_MEM:
     
     * print word (only size available to memory shifts) *
     JSR PRINTWORD
+    
+    * set size to word (0)
+    CLR.L D5
     
     JSR PRINTSPACE * print space *
     
@@ -1138,6 +1190,9 @@ ASL_MEM:
     * print word (only size available to memory shifts) *
     JSR PRINTWORD
     
+    * set size to word (0)
+    CLR.L D5
+    
     * print space * 
     JSR PRINTSPACE
     
@@ -1175,6 +1230,9 @@ ASR_MEM:
     
     * print word (only size available to memory shifts *
     JSR PRINTWORD
+    
+    * set size to word (0)
+    CLR.L D5
     
     * print space *
     JSR PRINTSPACE
@@ -1229,6 +1287,9 @@ ROL_MEM:
     * print word (only size available to memory shifts *
     JSR PRINTWORD
     
+    * set size to word (0)
+    CLR.L D5
+    
     * print space *
     JSR PRINTSPACE
     
@@ -1266,6 +1327,9 @@ ROR_MEM:
     
     * print word (only size available to memory shifts *
     JSR PRINTWORD
+    
+    * set size to word (0)
+    CLR.L D5
     
     * print space *
     JSR PRINTSPACE
@@ -1609,6 +1673,9 @@ MULS:
     * print .W (since Word is the only valid size of MULS) *
     JSR PRINTWORD * prints .W
     
+    * set size to word (0)
+    CLR.L D5
+    
     JSR PRINTSPACE * print space *
     
     * print E/A *
@@ -1657,6 +1724,9 @@ DIVS:
     
     * print .W (since Word is the only valid size for DIVS) *
     JSR PRINTWORD * prints .W
+
+    * set size to word (0)
+    CLR.L D5
 
     JSR PRINTSPACE * print space *
 
@@ -2124,6 +2194,13 @@ CMP:
     
     JSR PRINTSPACE * print space *
     
+    * Set D2 to opmode for the UPDATE_THREE_BIT_SIZE function call
+    JSR RELOAD_INSTRUCTION
+    DIVU.W #64, D2
+    AND.L #$00000007, D2 * mask everything but opmode
+    
+    JSR UPDATE_THREE_BIT_SIZE * sets D5 for printing of immediate data if E/A is #<data>
+    
     * print E/A *
     CLR.L D3 * clear D3
     MOVE.W (A0), D3 * copy instruction into D3
@@ -2144,6 +2221,13 @@ CMP:
     * reset D3 before incrementing Address pointer
     CLR.L D3 * clear D3
     MOVE.W (A0), D3 * copy instruction into D3
+    
+    * Set D2 to opmode for the UPDATE_THREE_BIT_SIZE function call
+    JSR RELOAD_INSTRUCTION
+    DIVU.W #64, D2
+    AND.L #$00000007, D2 * mask everything but opmode
+    
+    JSR UPDATE_THREE_BIT_SIZE * sets D5 for incrementing of Address pointer by size of immediate data if E/A is #<data>
     
     * Increment Address pointer by 16 bits (2 bytes) *
     JSR INCR_ADDRESS
@@ -2329,6 +2413,13 @@ ADD_LEFT:
     
     JSR PRINTSPACE * print space
     
+    * Set D2 to opmode for the UPDATE_THREE_BIT_SIZE function call
+    JSR RELOAD_INSTRUCTION
+    DIVU.W #64, D2
+    AND.L #$00000007, D2 * mask everything but opmode
+    
+    JSR UPDATE_THREE_BIT_SIZE * sets D5 for printing of immediate data if E/A is #<data>
+    
     * print E/A *
     CLR.L D3 * clear D3
     MOVE.W (A0), D3 * copy instruction into D3
@@ -2349,6 +2440,13 @@ ADD_LEFT:
     * reset D3 before incrementing Address pointer
     CLR.L D3 * clear D3
     MOVE.W (A0), D3 * copy instruction into D3    
+    
+    * Set D2 to opmode for the UPDATE_THREE_BIT_SIZE function call
+    JSR RELOAD_INSTRUCTION
+    DIVU.W #64, D2
+    AND.L #$00000007, D2 * mask everything but opmode
+    
+    JSR UPDATE_THREE_BIT_SIZE * sets D5 for incrementing of Address pointer by size of immediate data if E/A is #<data>
     
     * Increment address pointer by 16 bits (2 bytes) *
     JSR INCR_ADDRESS
@@ -2392,6 +2490,13 @@ ADD_RIGHT:
     
     JSR PRINTSPACE * print space
     
+    * Set D2 to opmode for the UPDATE_THREE_BIT_SIZE function call
+    JSR RELOAD_INSTRUCTION
+    DIVU.W #64, D2
+    AND.L #$00000007, D2 * mask everything but opmode
+    
+    JSR UPDATE_THREE_BIT_SIZE * sets D5 for printing of immediate data if E/A is #<data>
+    
     * print E/A *
     CLR.L D3 * clear D3
     MOVE.W (A0), D3 * copy instruction into D3
@@ -2400,6 +2505,13 @@ ADD_RIGHT:
     * reset D3 before incrementing Address pointer
     CLR.L D3 * clear D3
     MOVE.W (A0), D3 * copy instruction into D3
+    
+    * Set D2 to opmode for the UPDATE_THREE_BIT_SIZE function call
+    JSR RELOAD_INSTRUCTION
+    DIVU.W #64, D2
+    AND.L #$00000007, D2 * mask everything but opmode
+    
+    JSR UPDATE_THREE_BIT_SIZE * sets D5 for incrementing of Address pointer by size of immediate data if E/A is #<data>
     
     * Increment address pointer by 16 bits (2 bytes) *
     JSR INCR_ADDRESS
@@ -2431,6 +2543,13 @@ SUB_LEFT:
     
     JSR PRINTSPACE * print space
 
+    * Set D2 to opmode for the UPDATE_THREE_BIT_SIZE function call
+    JSR RELOAD_INSTRUCTION
+    DIVU.W #64, D2
+    AND.L #$00000007, D2 * mask everything but opmode
+    
+    JSR UPDATE_THREE_BIT_SIZE * sets D5 for printing of immediate data if E/A is #<data>
+    
     * print E/A *
     CLR.L D3 * clear D3
     MOVE.W (A0), D3 * copy instruction into D3
@@ -2451,6 +2570,13 @@ SUB_LEFT:
     * reset D3 before incrementing Address pointer
     CLR.L D3 * clear D3
     MOVE.W (A0), D3 * copy instruction into D3
+    
+    * Set D2 to opmode for the UPDATE_THREE_BIT_SIZE function call
+    JSR RELOAD_INSTRUCTION
+    DIVU.W #64, D2
+    AND.L #$00000007, D2 * mask everything but opmode
+    
+    JSR UPDATE_THREE_BIT_SIZE * sets D5 for incrementing of Address pointer by size of immediate data if E/A is #<data>
     
     * Increment address pointer by 16 bits (2 bytes) *
     JSR INCR_ADDRESS
@@ -2498,6 +2624,13 @@ SUB_RIGHT:
     CLR.L D3 * clear D3
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
+    
+    * Set D2 to opmode for the UPDATE_THREE_BIT_SIZE function call
+    JSR RELOAD_INSTRUCTION
+    DIVU.W #64, D2
+    AND.L #$00000007, D2 * mask everything but opmode
+    
+    JSR UPDATE_THREE_BIT_SIZE * sets D5 for incrementing of Address pointer by size of immediate data if E/A is #<data>
     
     * reset D3 before incrementing Address pointer
     CLR.L D3 * clear D3
@@ -2941,6 +3074,31 @@ THREE_BIT_OPMODE * must call with JSR, since returns with RTS *
     
     RTS * return if opmode is invalid (it shouldn't be if checking invalid opmodes in the opcode decoding)
 
+UPDATE_THREE_BIT_SIZE:
+* D2 should have opmode indicating size in the last 3 bits *
+* sets D5 to 0 for .B or .W, and 1 for .L *
+* for use in passing size to E/A incrementing so immediate data increments the address pointer properly *
+
+    CMP.B #0, D2
+    BEQ SIZE_0 * set D5 to 0 when size is .B
+    
+    CMP.B #1, D2
+    BEQ SIZE_0 * set D5 to 0 when size is .W
+    
+    CMP.B #2, D2
+    BEQ SIZE_1 * set D5 to 1 when size is .L
+    
+    CMP.B #4, D2
+    BEQ SIZE_0 * set D5 to 0 when size is .B
+    
+    CMP.B #5, D2
+    BEQ SIZE_0 * set D5 to 0 when size is .W
+    
+    CMP.B #6, D2
+    BEQ SIZE_1 * set D5 to 0 when size is .L
+    
+    RTS * return *
+
 TWOBITSIZE: * always call with JSR, since this function returns with RTS *
 * prints .L for 10, .W for 01, or .B for 00 where the two bits are in D2 *
 * Called from NEG, SUBQ, ORI, CMPI *
@@ -2956,6 +3114,22 @@ TWOBITSIZE: * always call with JSR, since this function returns with RTS *
 
     RTS * return if the size in D2 is invalid (shouldn't be if checking invalid size before calling *
     
+UPDATE_TWO_BIT_SIZE:
+* D2 should have the size loaded in the last 2 bits *
+* sets D5 to 0 for .B or .W, and 1 for .L *
+* for use in passing size to E/A incrementing so immediate data increments the address pointer properly *
+
+    CMP.B #0, D2
+    BEQ SIZE_0 * sets D5 to 0 when it's .B
+    
+    CMP.B #1, D2
+    BEQ SIZE_0 * sets D5 to 0 when it's .W
+    
+    CMP.B #2, D2
+    BEQ SIZE_1 * sets D5 to 1 when it's .L
+     
+    RTS * return *    
+
 MOVESIZE: * always call with JSR, since this function returns with RTS *
 * prints .L for 10, .W for 11, or .B for 01 where the two bits are in D2 *
 
@@ -3351,7 +3525,27 @@ PRINT_IMMEDIATE_EA:
     ADD.W #2, A4 * increment A4 by 16 bits (2 bytes)
     
     CLR.L D1 * clear D1
+    
+    * compare the size value in D5 to determine whether to print a Word or a Long *
+    CMP.B #0, D5
+    BEQ PRINT_IMM_WORD
+    
+    CMP.B #1, D5
+    BEQ PRINT_IMM_LONG
+    
+    RTS * return, if size is invalid (shouldn't happen) *
+
+PRINT_IMM_WORD:
+    
     MOVE.W (A4), D1 * move the word of memory from A4 to D1
+    MOVE.B #3, D0 * trap task 3 displays a number to system out
+    TRAP #15 * calls trap #15
+    
+    RTS * return *
+
+PRINT_IMM_LONG:
+
+    MOVE.L (A4), D1 * move the long of memory from A4 to D1
     MOVE.B #3, D0 * trap task 3 displays a number to system out
     TRAP #15 * calls trap #15
     
@@ -3424,24 +3618,32 @@ IS_AN_DEC:
 
 EA_INCREMENT_MORE:
 * checks if 6 bit E/A in [mode] [reg] order in D3 is (XXX).W or (XXX).L, and increments the correct amount for word or long *
+* size of the instruction should be saved in D5 -> 0 for .W or .B, 1 for .L *
 
     MOVE.L D3, D4 * save the E/A from D3 in D4
-
-    JSR SET_EA_INVALID * sets D6 to 0
     
-    JSR IS_WORD * checks if it's (XXX).W *
+    * checks if it's (XXX).W *
+    JSR SET_EA_INVALID * sets D6 to 0
+    JSR IS_WORD 
     
     CMP.B #1, D6
     BEQ EA_INCREMENTADDRESS * increments by 16 bits (2 bytes)
     
     MOVE.L D3, D4 * save the E/A from D3 in D4
     
+    * check if it's (XXX).L *
     JSR SET_EA_INVALID * sets D6 to 0
+    JSR IS_LONG
     
-    JSR IS_LONG * checks if it's (XXX).L *
-
     CMP.B #1, D6
-    BEQ EA_INC32
+    BEQ EA_INC32 * increments by 32 bits (2 bytes)
+    
+    * checks if it's #<data> and increments for trailing data
+    JSR SET_EA_INVALID * sets D6 to 0
+    JSR IS_IMMEDIATE 
+    
+    CMP.B #1, D6
+    BEQ EA_INC_IMMEDIATE * increment 32 if size is .L, and 16 if size is .B or .W
     
     RTS * return, if not incrementing *
 
@@ -3456,6 +3658,15 @@ EA_INC32:
     JSR INC32 * increments by 32 bits (4 bytes)
     
     RTS * return *
+
+EA_INC_IMMEDIATE:
+* for .B, .W sizes increment by 16, for .L increments by 32 *
+* size should be stored in D5 -> 0 for .B or .W, 1 for .L *
+
+    CMP.B #1, D5 * check the size
+    BEQ EA_INC32 * increments by 32 bits if size is .L
+    
+    BRA EA_INCREMENTADDRESS * else increment by 16
 
 IS_WORD:
 * checks if 6 bit E/A in [mode] [reg] order in D3 is (XXX).W, sets D6 to 1 if valid *
@@ -3522,7 +3733,14 @@ graceful_end:
 * test code down here -> memory address ORG at $4000
 
     ORG $4000
+    MOVEA.W #12, A1
+    MOVEA.L #12, A2
     MOVE.W (A0), (A1)
+    MOVE.L -(A2), (A3)+
+    CMP.B #12, D2
+    CMP.W #12, D2
+    CMP.L #12, D2
+    MOVE.L #12, (A2)
     MOVE.B D2, D1
     MOVE.L A0, D2
     MOVE.B -(A2), D4
