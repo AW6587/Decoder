@@ -949,6 +949,11 @@ MOVEA:
     * Increment address pointer *
     JSR INCR_ADDRESS
     
+    * Increment more if E/A has trailing DATA *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_INCREMENT_MORE
+    
     * Call I/O to output
     LEA SPACE, A1
     BRA IO_VALID
@@ -1013,8 +1018,15 @@ LSL_MEM:
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     * Increment address pointer
     JSR INCR_ADDRESS
+
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
 
     * Call I/O to output
     LEA SPACE, A1
@@ -1043,8 +1055,15 @@ LSR_MEM:
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     * Increment address pointer *
     JSR INCR_ADDRESS
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
     
     * Call I/O to output
     LEA SPACE, A1
@@ -1089,9 +1108,16 @@ ASL_MEM:
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     * Increment address pointer
     JSR INCR_ADDRESS
-
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
+    
     * Call I/O to output
     LEA SPACE, A1
     BRA IO_VALID
@@ -1120,8 +1146,15 @@ ASR_MEM:
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     * Increment address pointer
     JSR INCR_ADDRESS
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
     
     * Call I/O to output
     LEA SPACE, A1
@@ -1166,8 +1199,15 @@ ROL_MEM:
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     * Increment address pointer
     JSR INCR_ADDRESS
+
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
 
     * Call I/O to output
     LEA SPACE, A1
@@ -1197,9 +1237,16 @@ ROR_MEM:
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     * Increment address pointer
     JSR INCR_ADDRESS
-
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
+    
     * Call I/O to output
     LEA SPACE, A1
     BRA IO_VALID
@@ -1543,8 +1590,15 @@ MULS:
     AND.L #$00000007, D2 ; mask the division remainder
     JSR PRINT_DATA_REGISTER * call to PRINT_DATA_REGISTER
 
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+
     * Increment address pointer
     JSR INCR_ADDRESS
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
 
     * Call I/O to output
     LEA SPACE, A1
@@ -1585,9 +1639,16 @@ DIVS:
     AND.L #$00000007, D2 ; mask the division remainder
     JSR PRINT_DATA_REGISTER * call to PRINT_DATA_REGISTER
 
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+
     * Increment address pointer by 16 bits (2 bytes)
     JSR INCR_ADDRESS
-
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
+    
     * Call I/O to output
     LEA SPACE, A1
     BRA IO_VALID
@@ -1624,8 +1685,15 @@ NEG:
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
 
-    JSR INCR_ADDRESS * Increment address pointer by 16 bits (2 bytes)
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
 
+    JSR INCR_ADDRESS * Increment address pointer by 16 bits (2 bytes)
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
+    
 * Call I/O to output a line return 
     LEA SPACE, A1
     BRA IO_VALID
@@ -1652,7 +1720,14 @@ JSR:
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     JSR INCR_ADDRESS * Increment address pointer by 16 bits (2 bytes)
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
     
     * print a line return *
     LEA SPACE, A1
@@ -1692,7 +1767,14 @@ LEA:
     
     JSR PRINTADDRESSREGISTER * prints the address register # stored in D2
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     JSR INCR_ADDRESS * Increment address pointer by 16 bits (2 bytes)
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
     
     * print a line return *
     LEA SPACE, A1
@@ -1825,8 +1907,15 @@ MOVEM_REG_TO_MEM:
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
 
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+
     * Increment address pointer by 32 bits (4 bytes)
     JSR INC32
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
     
     * Call I/O to output
     LEA SPACE, A1
@@ -1864,8 +1953,15 @@ MOVEM_MEM_TO_REG:
 
     * print registers *
 
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+
     * Increment address pointer by 32 bits (4 bytes)
     JSR INC32
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
     
     * Call I/O to output
     LEA SPACE, A1
@@ -1908,8 +2004,15 @@ CMP:
     AND.L #$00000007, D2 ; mask the division remainder
     JSR PRINT_DATA_REGISTER * call to PRINT_DATA_REGISTER
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     * Increment Address pointer by 16 bits (2 bytes) *
     JSR INCR_ADDRESS
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
     
     * Call I/O to output *
     LEA SPACE, A1
@@ -1952,9 +2055,16 @@ EOR:
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     * Increment address pointer by 16 bits (2 bytes) *
     JSR INCR_ADDRESS
-
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
+    
     * Call I/O to output *
     LEA SPACE, A1
     BRA IO_VALID
@@ -1996,8 +2106,15 @@ OR_LEFT:
     AND.L #$00000007, D2 ; mask the division remainder
     JSR PRINT_DATA_REGISTER * call to PRINT_DATA_REGISTER
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     * Increment address pointer by 16 bits (2 bytes) *
     JSR INCR_ADDRESS
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
     
     * Call I/O to output *
     LEA SPACE, A1
@@ -2041,8 +2158,15 @@ OR_RIGHT:
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     * Increment address pointer by 16 bits (2 bytes) *
     JSR INCR_ADDRESS
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
     
     * Call I/O to output *
     LEA SPACE, A1
@@ -2085,8 +2209,15 @@ ADD_LEFT:
     AND.L #$00000007, D2 ; mask the division remainder
     JSR PRINT_DATA_REGISTER * call to PRINT_DATA_REGISTER
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3    
+    
     * Increment address pointer by 16 bits (2 bytes) *
     JSR INCR_ADDRESS
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
     
     * Call I/O to output *
     LEA SPACE, A1
@@ -2129,8 +2260,15 @@ ADD_RIGHT:
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     * Increment address pointer by 16 bits (2 bytes) *
     JSR INCR_ADDRESS
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
     
     * Call I/O to output *
     LEA SPACE, A1
@@ -2173,8 +2311,15 @@ SUB_LEFT:
     AND.L #$00000007, D2 ; mask the division remainder
     JSR PRINT_DATA_REGISTER * call to PRINT_DATA_REGISTER
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     * Increment address pointer by 16 bits (2 bytes) *
     JSR INCR_ADDRESS
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
     
     * Call I/O to output *
     LEA SPACE, A1
@@ -2217,8 +2362,15 @@ SUB_RIGHT:
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     * Increment address pointer by 16 bits (2 bytes) *
     JSR INCR_ADDRESS
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
     
     * Call I/O to output *
     LEA SPACE, A1
@@ -2267,8 +2419,15 @@ SUBQ:
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     * Increment address pointer by 16 bits (2 bytes) *
     JSR INCR_ADDRESS
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
     
     * Call I/O to output *
     LEA SPACE, A1
@@ -2312,8 +2471,15 @@ ORI:
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     * increment address pointer by either 32 bits or 48 bits *
     JSR INCR_32_OR_48
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
     
     * Call I/O to output *
     LEA SPACE, A1
@@ -2430,6 +2596,11 @@ CMPI:
     * increment address pointer by 32 bits or 48 bits depending on size *
     JSR INCR_32_OR_48
     
+    * Increment more if E/A has trailing DATA *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_INCREMENT_MORE
+    
     * Call I/O to output *
     LEA SPACE, A1
     BRA IO_VALID
@@ -2481,9 +2652,16 @@ BCLR_STATIC:
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
 
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+
     * Increment address pointer by 32 bits (4 bytes) *
     JSR INC32
-
+    
+    * Increment more if E/A has trailing DATA *
+    JSR EA_INCREMENT_MORE
+    
     * Call I/O to output
     LEA SPACE, A1
     BRA IO_VALID
@@ -2526,7 +2704,10 @@ BCLR_DYNAMIC:
     * Increment address pointer by 16 bits
     JSR INCR_ADDRESS
     
-    * call to increment address more based on E/A
+    * Increment more if E/A has trailing DATA *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_INCREMENT_MORE
 
     * Call I/O to output
     LEA SPACE, A1
@@ -2570,7 +2751,10 @@ ADDA:
     * Increment address pointer by 16 bits
     JSR INCR_ADDRESS
     
-    * call to increment address pointer more based on E/A
+    * Increment more if E/A has trailing DATA *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_INCREMENT_MORE
 
     * Call I/O to output
     LEA SPACE, A1
@@ -3093,6 +3277,41 @@ IS_AN_DEC:
     
     RTS * return, only reaches here if not -(An) *
 
+EA_INCREMENT_MORE:
+* checks if 6 bit E/A in [mode] [reg] order in D3 is (XXX).W or (XXX).L, and increments the correct amount for word or long *
+
+    MOVE.L D3, D4 * save the E/A from D3 in D4
+
+    JSR SET_EA_INVALID * sets D6 to 0
+    
+    JSR IS_WORD * checks if it's (XXX).W *
+    
+    CMP.B #1, D6
+    BEQ EA_INCREMENTADDRESS * increments by 16 bits (2 bytes)
+    
+    MOVE.L D3, D4 * save the E/A from D3 in D4
+    
+    JSR SET_EA_INVALID * sets D6 to 0
+    
+    JSR IS_LONG * checks if it's (XXX).L *
+
+    CMP.B #1, D6
+    BEQ EA_INC32
+    
+    RTS * return, if not incrementing *
+
+EA_INCREMENTADDRESS:
+
+    JSR INCR_ADDRESS * increments by 16 bits (2 bytes)
+    
+    RTS * return *
+    
+EA_INC32:
+
+    JSR INC32 * increments by 32 bits (4 bytes)
+    
+    RTS * return *
+
 IS_WORD:
 * checks if 6 bit E/A in [mode] [reg] order in D3 is (XXX).W, sets D6 to 1 if valid *
 
@@ -3158,16 +3377,16 @@ graceful_end:
 * test code down here -> memory address ORG at $4000
 
     ORG $4000
+    CMP.B $0020, D6
+    MOVEM.L D2, (A1)
+    MOVEM.W (A3), D2
+    CMP.B $02004000, D7
     CMP.B D2, D1
     CMP.W A0, D2
     CMP.L (A2), D3
     CMP.B (A3)+, D4
     CMP.B -(A1), D6
-    CMP.B #14, D6 * not correct
-    CMP.B $0020, D6 * not correct
-    CMP.B $00004000, D7 * not correct
-    MOVEM.L D2, (A1)
-    MOVEM.W (A3), D2
+    CMP.B #14, D6
     DIVU.W D1, D2 * not implemented -> should be DATA YYYY
     ASL.B #2, D0
     ROL.L #3, D0
@@ -3180,7 +3399,7 @@ graceful_end:
     ASR.W (A2)
     ASL (A1)
     ROR.W (A5)
-    ADDA.L A1, A2
+    ADDA.L A1, A2 * displaying as DATA
     BCLR #4, (A3)
     MULS D2, D3
     DIVS (A1), D3
