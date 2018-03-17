@@ -859,7 +859,7 @@ FIFTEEN:
     BRA IO_INVALID
 
 MOVE:
-
+    
     * check if size is valid *
     JSR RELOAD_INSTRUCTION * reload the 16 bit instruction into D2
     DIVU.W #$1000, D2 * divide the instruction to isolate the size
@@ -868,9 +868,29 @@ MOVE:
     CMP.B #0, D2
     BEQ IO_INVALID * the only invalid size is 00
     
-    * call E/A to get effective Addresses *
-        * if E/A not valid call IO_INVALID *
+    * call E/A to get effective Address for Source E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR EA_GROUP1 * D6 will be set to 1 if valid, 0 if invalid
         
+    CMP.B #0, D6   * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
+    
+    * call E/A to get effective Address of Destination E/A *
+    CLR.L D3 * fancy bit shifting, to get mode and register realigned *
+    MOVE.W (A0), D3 * copy instruction into D3
+    MOVE.W (A0), D4 * copy instruction into D4
+    ROR.L #3, D3 * rotate right 3 bits to get mode into mode position
+    AND.L #$000000E0, D3 * mask everything except mode 
+    DIVU.W #512, D4 * divide D4 to get register in last 3 bits
+    AND.L #$00000007, D4 * mask everything in D4 except register
+    ADD.W D4, D3 * put register into D3 with mode
+    
+    JSR EA_GROUP3 * D6 will be set to 1 if valid, 0 if invalid
+    
+    CMP.B #0, D6  * If E/A not valid call IO_INVALID
+    BEQ IO_INVALID
+    
     * print MOVE *
     LEA MOVE_OUT, A1
     JSR PRINT_VAR * prints the last var loaded into A1 (MOVE)
@@ -884,14 +904,30 @@ MOVE:
     
     JSR PRINTSPACE * print space *
     
-    * print E/A *
+    * print source E/A *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    JSR PRINT_EA
     
     LEA COMMA, A1
     JSR PRINT_VAR * print the last var loaded into A1 (comma)
     
     JSR PRINTSPACE * print space *
     
-    * print E/A *
+    * print destination E/A *
+    CLR.L D3 * fancy bit shifting, to get mode and register realigned *
+    MOVE.W (A0), D3 * copy instruction into D3
+    MOVE.W (A0), D4 * copy instruction into D4
+    ROR.L #3, D3 * rotate right 3 bits to get mode into mode position
+    AND.L #$000000E0, D3 * mask everything except mode 
+    DIVU.W #512, D4 * divide D4 to get register in last 3 bits
+    AND.L #$00000007, D4 * mask everything in D4 except register
+    ADD.W D4, D3 * put register into D3 with mode
+    
+    JSR PRINT_EA
+    
+    * Use A5 to store the incremented address pointer
+    * add standard 16 bit increment + source E/A increment + dest E/A increment *
     
     * Increment address pointer *
     JSR INCR_ADDRESS
@@ -946,12 +982,14 @@ MOVEA:
     
     JSR PRINTADDRESSREGISTER * prints the address register number in D2
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     * Increment address pointer *
     JSR INCR_ADDRESS
     
     * Increment more if E/A has trailing DATA *
-    CLR.L D3 * clear D3
-    MOVE.W (A0), D3 * copy instruction into D3
     JSR EA_INCREMENT_MORE
     
     * Call I/O to output
@@ -1752,8 +1790,6 @@ LEA:
     CLR.L D3 * clear D3
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
-    
-    JSR PRINTSPACE * display a space *
     
     * display a comma *
     LEA COMMA, A1
@@ -2593,12 +2629,14 @@ CMPI:
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
     
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     * increment address pointer by 32 bits or 48 bits depending on size *
     JSR INCR_32_OR_48
     
     * Increment more if E/A has trailing DATA *
-    CLR.L D3 * clear D3
-    MOVE.W (A0), D3 * copy instruction into D3
     JSR EA_INCREMENT_MORE
     
     * Call I/O to output *
@@ -2701,12 +2739,14 @@ BCLR_DYNAMIC:
     MOVE.W (A0), D3 * copy instruction into D3
     JSR PRINT_EA
 
+    * reset D3 before incrementing Address pointer
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+
     * Increment address pointer by 16 bits
     JSR INCR_ADDRESS
     
     * Increment more if E/A has trailing DATA *
-    CLR.L D3 * clear D3
-    MOVE.W (A0), D3 * copy instruction into D3
     JSR EA_INCREMENT_MORE
 
     * Call I/O to output
@@ -2721,7 +2761,7 @@ ADDA:
     MOVE.W (A0), D3 * copy the instruction to D3
     JSR EA_GROUP1 * D6 will be set to 1 if valid, 0 if invalid
     
-    CMP.B #0, D5    * If E/A not valid call IO_INVALID
+    CMP.B #0, D6    * If E/A not valid call IO_INVALID
     BEQ IO_INVALID
     
     * print ADDA *
@@ -2742,18 +2782,22 @@ ADDA:
     LEA COMMA, A1
     JSR PRINT_VAR * prints the last var loaded to A1 (comma)
     
+    JSR PRINTSPACE * print space
+    
     * print address Register *
     JSR RELOAD_INSTRUCTION ; reload the first 16 bits of instruction to D2
     DIVU.W #512, D2 ; divide to isolate the address register
     AND.L #$00000007, D2 ; mask the division remainder
     JSR PRINTADDRESSREGISTER * call to PRINTADDRESSREGISTER
-
+    
+    * reset D3 before incrementing Address pointer *
+    CLR.L D3 * clear D3
+    MOVE.W (A0), D3 * copy instruction into D3
+    
     * Increment address pointer by 16 bits
     JSR INCR_ADDRESS
     
     * Increment more if E/A has trailing DATA *
-    CLR.L D3 * clear D3
-    MOVE.W (A0), D3 * copy instruction into D3
     JSR EA_INCREMENT_MORE
 
     * Call I/O to output
@@ -3377,6 +3421,12 @@ graceful_end:
 * test code down here -> memory address ORG at $4000
 
     ORG $4000
+    MOVE.B D2, D1
+    MOVE.L A0, D2
+    MOVE.W (A0), (A1) * destination is printing as a data register
+    MOVE.B -(A2), D4
+    MOVE.W $00001000, D6
+    MOVE.B #12, D7
     CMP.B $0020, D6
     MOVEM.L D2, (A1)
     MOVEM.W (A3), D2
@@ -3415,7 +3465,7 @@ graceful_end:
     BGE DONE
     BLT DONE
     MOVEA.W D3, A2
-    MOVE.B D2, D5
+    MOVE.B D2, D5 * displaying as DATA
     BVC DONE
     BCS DONE
     BRA DONE
